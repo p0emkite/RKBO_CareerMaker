@@ -91,7 +91,7 @@ window.RKBOCard=(()=>{
   }
  }
  function draw(args){
-  const {canvas,p,teamInfo={},image,logos={},rowSprite=null,wins={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",displayName=null,displayNumber=null,mode="regular"}=args;
+  const {canvas,p,teamInfo={},image,logos={},rowSprite=null,wins={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",faRole=null,displayName=null,displayNumber=null,mode="regular"}=args;
   const ctx=canvas.getContext("2d");const pitcher=p?.kind==="pitcher";
   const post=mode==="postseason";
   const columns=post?(pitcher?postPit:postBat):(pitcher?pit:bat);
@@ -124,8 +124,10 @@ window.RKBOCard=(()=>{
   write(ctx,playerLabel,midpoint,113,fitFont(ctx,playerLabel,53,41,W*.43),"center",true,"#fff");
   write(ctx,subtitle,midpoint,181,fitFont(ctx,subtitle,28,24,W*.34),"center",true,"#fff");
   if(fa&&p){
-   const grade=String(faGrade||"C").toUpperCase();
-   const faLabel=pitcher?("FA  "+grade+"등급  "+pitcherRole(p)):("FA  "+grade+"등급");
+   const grade=String(faGrade||"").toUpperCase();
+   const label=["A","B","C"].includes(grade)?grade+"등급":"등급 확인 필요";
+   const role=faRole||pitcherRole(p);
+   const faLabel=pitcher?("FA  "+label+"  "+role):("FA  "+label);
    const faColor=grade==="A"?"#FFD34D":"#ffffff";
    const fontSize=pitcher?23:20;
    const faY=pitcher?216:209;
