@@ -63,7 +63,8 @@ window.RKBOCard=(()=>{
   for(const [,label,w] of tableCols){starts.push(next);widths.push(w*factor);next+=w*factor}
   ctx.fillStyle="#070707";ctx.fillRect(0,H0,W,headH);
   tableCols.forEach(([key,label],i)=>write(ctx,label,starts[i]+widths[i]/2,H0+headH/2,18,"center",true,"#fff",widths[i]-1));
-  const entryRows=[
+  const koreanTeam={KIA:"KIA",HAN:"한화",SAM:"삼성",LOT:"롯데",LG:"LG",DOO:"두산",SSG:"SSG",NC:"NC",SK:"SK",KT:"KT",KIW:"키움"};
+ const entryRows=[
     ...rows.map(r=>({...r,title:(r.year-1950)+"차"})),
     {title:"4시즌 통산",stats:RKBOXls.summary(p,"career"),total:true},
     {title:"최근 3시즌 통산",stats:RKBOXls.summary(p,"last3"),total:true}
@@ -77,16 +78,17 @@ window.RKBOCard=(()=>{
    ctx.fillStyle=rc;ctx.fillRect(0,y,W,rowH);
    ctx.fillStyle="#fff";ctx.fillRect(0,y,W,2);
    if(r.total){
-    write(ctx,r.title,8+W*.04,y+16,17,"left",true,"#fff",230);
+    write(ctx,r.title,7,y+16,Math.min(15,Math.max(12,104/r.title.length)),"left",true,"#fff",widths[0]+widths[1]-12);
    }else{
     const rowlogo=logos[r.team]; const wYear=widths[0],wTeam=widths[1];
     write(ctx,r.title,4,y+17,17,"left",true);
     if(rowlogo&&rowlogo.complete&&rowlogo.naturalWidth){
-     const ratio=Math.min(24/rowlogo.naturalWidth,22/rowlogo.naturalHeight);
+     ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(starts[1]+13,y+rowH/2,12,0,Math.PI*2);ctx.fill();
+     const ratio=Math.min(22/rowlogo.naturalWidth,22/rowlogo.naturalHeight);
      const ww=rowlogo.naturalWidth*ratio,hh=rowlogo.naturalHeight*ratio;
-     ctx.drawImage(rowlogo,starts[1]+1,y+4,ww,hh);
+     ctx.drawImage(rowlogo,starts[1]+13-ww/2,y+rowH/2-hh/2,ww,hh);
     }
-    write(ctx,r.team||"—",starts[1]+wTeam*.60,y+17,17,"center",true,"#fff");
+    write(ctx,koreanTeam[r.team]||"—",starts[1]+wTeam*.67,y+17,16,"center",true,"#fff",wTeam*.55);
    }
    for(let j=2;j<tableCols.length;j++)write(ctx,rate(r.stats,tableCols[j][0]),starts[j]+widths[j]/2,y+17,16,"center",true,"#fff",widths[j]-3);
    // Summary first numeric falls at position 2, matching the original layout.
