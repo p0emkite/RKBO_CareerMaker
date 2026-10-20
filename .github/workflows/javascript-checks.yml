@@ -18,6 +18,8 @@ jobs:
           node-version: '22'
       - run: |
           node --check app.js
+          node --check player-filter.js
           node --check card-renderer.js
           node --check rkbo-xls.js
           node tests/import.test.cjs
+          node tests/player-filter.test.cjs
