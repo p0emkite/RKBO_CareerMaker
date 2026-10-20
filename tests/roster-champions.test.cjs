@@ -19,7 +19,7 @@ assert.equal(parsed.errors.length,0);
 assert.equal(parsed.count,3);
 assert.equal(parsed.map[57],"SAM");
 assert.equal(parsed.map[38],"HAN");
-assert.deepEqual(champs.parse("60,KIA\n57,삼성").errors,[]);
+assert.equal(champs.parse("60,KIA\n57,삼성").errors.length,0);
 assert.equal(champs.parse("60,INVALID").errors.length,1);
 assert.match(champs.format(champs.DEFAULT),/60,KIA/);
 const refCtx={window:{},fetch:async url=>({
