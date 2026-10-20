@@ -92,23 +92,37 @@ window.RKBOPostseason=(()=>{
    throw Error("타자_전체 기록(포시) / 투수_전체 기록(포시) 탭을 찾지 못했습니다.");
   return entries;
  }
- function matchPlayer(players,rec){
-  const desired=new Set(identifiers(rec.name));
-  let exact=[];
+ function buildIndex(players){
+  const index=new Map();
   for(const p of Object.values(players)){
-   if(p.kind!==rec.kind)continue;
-   const aliases=[p.name,...(p.aliases||[]),...(p.postAliases||[])];
-   if(aliases.some(a=>identifiers(a).some(k=>desired.has(k))))exact.push(p);
+   if(!p||!p.id||!p.kind)continue;
+   for(const alias of [p.name,...(p.aliases||[]),...(p.postAliases||[])]){
+    for(const sig of identifiers(alias)){
+     const key=p.kind+":"+sig;
+     if(!index.has(key))index.set(key,new Set());
+     index.get(key).add(p.id);
+    }
+   }
   }
-  if(exact.length===1)return {player:exact[0]};
-  // When no known player matches or more than one does, do not guess.
-  return {player:null,ambiguous:exact.length>1};
+  return index;
+ }
+ function matchPlayer(players,rec,index=buildIndex(players)){
+  const ids=new Set();
+  for(const sig of identifiers(rec.name)){
+   for(const id of index.get(rec.kind+":"+sig)||[])ids.add(id);
+  }
+  const matching=[...ids].map(id=>players[id]).filter(Boolean);
+  const confirmed=matching.filter(p=>!String(p.id).startsWith("ps:"));
+  if(confirmed.length===1)return {player:confirmed[0]};
+  if(confirmed.length>1)return {player:null,ambiguous:true};
+  if(matching.length===1)return {player:matching[0]};
+  return {player:null,ambiguous:matching.length>1};
  }
  function merge(players,entries){
-  const result={...players},counts={newPlayers:0,matched:0,added:0,updated:0,ambiguous:0,conflicts:0,skipped:0};
+  const result={...players},index=buildIndex(result),counts={newPlayers:0,matched:0,added:0,updated:0,ambiguous:0,conflicts:0,skipped:0};
   for(const item of entries){
    if(!item||!item.team||!item.year||!item.kind||!item.name||!item.stats) {counts.skipped++;continue}
-   const matched=matchPlayer(result,item);
+   const matched=matchPlayer(result,item,index);
    if(matched.ambiguous){counts.ambiguous++;counts.skipped++;continue}
    const canonical="ps:"+item.kind+":"+signature(item.name);
    const p=matched.player||result[canonical]||{
@@ -131,6 +145,14 @@ window.RKBOPostseason=(()=>{
     postLatestYear:Math.max(oldLatest,item.year),
     postAliases:[...new Set([...(p.postAliases||[]),item.name])],
     team:synthetic&&item.year>=oldLatest?item.team:(p.team||item.team)};
+   // Include a newly created player's identifiers without rescanning the entire DB.
+   for(const alias of [p.name,item.name]){
+    for(const sig of identifiers(alias)){
+     const lookupKey=p.kind+":"+sig;
+     if(!index.has(lookupKey))index.set(lookupKey,new Set());
+     index.get(lookupKey).add(p.id);
+    }
+   }
   }
   return {players:result,counts};
  }
