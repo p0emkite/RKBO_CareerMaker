@@ -1,6 +1,6 @@
 "use strict";
 const $=id=>document.getElementById(id);
-let championMap={};
+let championMap={},teamGradients={};
 
 let originalPhotoFile=null,photoGeneration=0,cutoutBusy=false,cutoutModule=null;
 const CUTOUT_CONFIG={model:"isnet",output:{format:"image/png",quality:1}};
@@ -101,6 +101,47 @@ function setChampionMap(source,message,{persist=true}={}){
  draw();
 }
 
+
+const TEAM_GRADIENTS_LOCAL_KEY="rkbo-team-gradients-v1";
+function gradientTeam(){
+ const selected=players[selectedId]?.team;
+ const code=selected||$("teamSelect")?.value;
+ return code&&code!=="ALL"&&TEAM[code]?code:null;
+}
+function readTeamGradients(){
+ try{return RKBOGitHubDB.normalizeTeamGradients(JSON.parse(localStorage.getItem(TEAM_GRADIENTS_LOCAL_KEY)||"{}"))}
+ catch(error){console.warn("Stored team gradients could not be loaded",error);return {}}
+}
+function applyTeamGradients(source,{persist=true}={}){
+ teamGradients=RKBOGitHubDB.normalizeTeamGradients(source);
+ if(persist){
+  try{localStorage.setItem(TEAM_GRADIENTS_LOCAL_KEY,JSON.stringify(teamGradients))}
+  catch(error){console.warn("Could not persist team gradients",error)}
+ }
+ refreshTeamGradientFields();
+}
+function refreshTeamGradientFields(){
+ const code=gradientTeam();
+ const config=code?teamGradients[code]:null;
+ const selected=config||{style:"solid",color2:"#17263c",angle:"0"};
+ $("bgStyle").value=selected.style;
+ $("bgColor2").value=selected.color2;
+ $("bgAngle").value=selected.angle;
+ for(const id of ["bgStyle","bgColor2","bgAngle"])$(id).disabled=!code;
+ $("teamGradientStatus").textContent=code
+  ?TEAM[code][0]+" · "+(config?"저장한 배경 설정 적용":"기본 배경 설정")+
+   " · 변경하면 자동 보관됩니다. GitHub 공유는 '현재 DB를 GitHub에 저장'."
+  :"소속 구단 또는 선수를 선택하면 구단별 배경 설정을 변경할 수 있습니다.";
+}
+function saveTeamGradient(){
+ const code=gradientTeam();
+ if(!code){refreshTeamGradientFields();return}
+ const setting={style:$("bgStyle").value,color2:$("bgColor2").value,angle:$("bgAngle").value};
+ applyTeamGradients({...teamGradients,[code]:setting});
+ $("teamGradientStatus").textContent=TEAM[code][0]+" · 배경 설정이 브라우저에 저장되었습니다. 공용 DB에는 별도 저장해 주세요.";
+ draw();
+}
+
 const CURRENT_SEASON_KEY="rkbo-current-season";
 let currentSeason=null,cloudLoadedForPublish=false,cloudHasPlayers=false;
 function parseSeasonNumber(value){
@@ -150,6 +191,8 @@ async function loadCloud({automatic=false}={}){
     setChampionMap({...RKBOChampions.DEFAULT,...championMap,...remote.champions},
       "기본 우승 기록과 GitHub 우승 기록을 적용했습니다.");
    }
+   // Keep this browser's edits; fill missing teams from shared GitHub settings.
+   applyTeamGradients({...remote.teamGradients,...teamGradients});
    updatePlayerList();
    setCloudStatus("GitHub 연결됨",remoteCount?
     "브라우저에 "+localCount+"명, GitHub에 "+remoteCount+"명의 기록이 있습니다. 기존 기록을 보호하기 위해 자동 덮어쓰지 않았습니다. GitHub DB 불러오기는 현재 브라우저 기록을 대체합니다.":
@@ -162,6 +205,7 @@ async function loadCloud({automatic=false}={}){
    return;
   }
   players=remote.players;
+  applyTeamGradients(remote.teamGradients);
   setChampionMap({...RKBOChampions.DEFAULT,...remote.champions},
     "GitHub 저장 기록을 불러왔습니다. 기본 우승 기록도 함께 적용했습니다.");
   if(remote.currentSeason!==null||!automatic)applySeason(remote.currentSeason);
@@ -188,9 +232,9 @@ async function publishCloud(){
  $("githubSave").disabled=true;
  setCloudStatus("GitHub 저장 중","선수 "+count+"명의 DB를 커밋하고 있습니다.");
  try{
-  const result=await RKBOGitHubDB.save({schema:2,currentSeason,champions:championMap,players});
+  const result=await RKBOGitHubDB.save({schema:2,currentSeason,champions:championMap,teamGradients,players});
   cloudLoadedForPublish=true;cloudHasPlayers=true;
-  setCloudStatus("저장 완료","GitHub에 "+count+"명 · 최신 "+currentSeason+"차 저장 완료 ("+new Date(result.updatedAt).toLocaleString("ko-KR")+").");
+  setCloudStatus("저장 완료","GitHub에 "+count+"명 · 최신 "+currentSeason+"차 · 구단별 배경 "+Object.keys(teamGradients).length+"팀 저장 완료 ("+new Date(result.updatedAt).toLocaleString("ko-KR")+").");
   report("GitHub 공용 DB 저장 완료. 다른 기기에서도 최신 기록을 불러올 수 있습니다.");
  }catch(e){setCloudStatus("저장 실패",e.message)}
  finally{refreshGithubControls()}
@@ -380,6 +424,7 @@ function updatePlayerList(){
  if(list.some(p=>p.id===selectedId))$("playerSelect").value=selectedId;
  else{selectedId="";$("playerSelect").value=""}
  showIdentityEditor();
+ refreshTeamGradientFields();
  draw();
 }
 function roundedRect(ctx,x,y,w,h,r,fill){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill()}
@@ -497,7 +542,7 @@ function draw(){
  $("kindBadge").textContent=p?.kind==="pitcher"?"PITCHER":p?"BATTER":"CAREER";
 }
 async function init(){
- try{await restore();try{championMap={...RKBOChampions.DEFAULT,...JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}}catch(e){championMap={...RKBOChampions.DEFAULT}}; $("champions").value=RKBOChampions.format(championMap);showChampionStatus("기본 22~60차 "+Object.keys(RKBOChampions.DEFAULT).length+"개 우승 시즌을 불러왔습니다. 수정한 뒤 저장하면 즉시 반영됩니다.");let savedSeason=null;try{savedSeason=localStorage.getItem(CURRENT_SEASON_KEY)}catch(e){}applySeason(savedSeason,{persist:false});populate();report("브라우저 DB 준비 완료 · 기준 시즌을 직접 저장할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
+ try{await restore();try{championMap={...RKBOChampions.DEFAULT,...JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}}catch(e){championMap={...RKBOChampions.DEFAULT}}; $("champions").value=RKBOChampions.format(championMap);showChampionStatus("기본 22~60차 "+Object.keys(RKBOChampions.DEFAULT).length+"개 우승 시즌을 불러왔습니다. 수정한 뒤 저장하면 즉시 반영됩니다.");let savedSeason=null;try{savedSeason=localStorage.getItem(CURRENT_SEASON_KEY)}catch(e){}applySeason(savedSeason,{persist:false});applyTeamGradients(readTeamGradients(),{persist:false});populate();report("브라우저 DB 준비 완료 · 기준 시즌을 직접 저장할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
  for(const id of ["teamSelect","includeRetired"])$(id).addEventListener("change",updatePlayerList);
  $("careerModeSelect").addEventListener("change",updatePlayerList);
 
@@ -532,7 +577,7 @@ async function init(){
  $("githubLoad").addEventListener("click",()=>loadCloud());
  $("githubSave").addEventListener("click",publishCloud);
 
- $("playerSelect").addEventListener("change",()=>{selectedId=$("playerSelect").value;showIdentityEditor();photoGeneration++;photo=null;originalPhotoFile=null;$("photoInput").value="";photoButtons();cutoutStatus("사진을 선택하면 AI 누끼를 사용할 수 있습니다.");$("faCheck").checked=false;$("faGrade").disabled=true;draw()});
+ $("playerSelect").addEventListener("change",()=>{selectedId=$("playerSelect").value;showIdentityEditor();refreshTeamGradientFields();photoGeneration++;photo=null;originalPhotoFile=null;$("photoInput").value="";photoButtons();cutoutStatus("사진을 선택하면 AI 누끼를 사용할 수 있습니다.");$("faCheck").checked=false;$("faGrade").disabled=true;draw()});
 
  $("saveIdentity").addEventListener("click",async()=>{
   const p=players[selectedId];if(!p)return;
@@ -554,7 +599,7 @@ async function init(){
  });
 
  $("xlsInput").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;try{report("RKBO XLS 읽는 중...");const parsed=RKBOXls.parse(await file.arrayBuffer());const result=RKBOXls.reconcile(players,RKBOXls.group(parsed));const reassigned=RKBOPostseason.relink(result.players);players=reassigned.players;await store();populate();report("XLS "+parsed.length+"개 기록 · 연결 "+result.info.linked+"명 · 신규 "+result.info.created+"명 · 중복·충돌 "+result.info.conflicts+"건 · 판정 보류 "+result.info.ambiguous+"명");}catch(e){console.error(e);report("XLS 불러오기 실패: "+e.message)}e.target.value=""});
- for(const id of ["bgStyle","bgColor2","bgAngle"])$(id).addEventListener("change",draw);
+ for(const id of ["bgStyle","bgColor2","bgAngle"])$(id).addEventListener(id==="bgColor2"?"input":"change",saveTeamGradient);
  $("saveChampions").onclick=()=>{
   const result=RKBOChampions.parse($("champions").value);
   if(result.errors.length){
