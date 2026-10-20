@@ -25,6 +25,45 @@ window.RKBOCard=(()=>{
   }
   return String(v);
  }
+ const logoBoundsCache=new WeakMap();
+ function visibleLogoBounds(img){
+  const cached=logoBoundsCache.get(img);
+  if(cached)return cached;
+  const fallback={sx:0,sy:0,sw:img.naturalWidth,sh:img.naturalHeight};
+  if(typeof document==="undefined"||!img.naturalWidth||!img.naturalHeight)return fallback;
+  try{
+   const sampleMax=320,scale=Math.min(1,sampleMax/Math.max(img.naturalWidth,img.naturalHeight));
+   const cw=Math.max(1,Math.round(img.naturalWidth*scale));
+   const ch=Math.max(1,Math.round(img.naturalHeight*scale));
+   const probe=document.createElement("canvas");probe.width=cw;probe.height=ch;
+   const context=probe.getContext("2d",{willReadFrequently:true});
+   if(!context)return fallback;
+   context.drawImage(img,0,0,cw,ch);
+   const data=context.getImageData(0,0,cw,ch).data;
+   let left=cw,top=ch,right=-1,bottom=-1;
+   for(let y=0;y<ch;y++)for(let x=0;x<cw;x++){
+    if(data[(y*cw+x)*4+3]<8)continue;
+    left=Math.min(left,x);right=Math.max(right,x);
+    top=Math.min(top,y);bottom=Math.max(bottom,y);
+   }
+   if(right<left||bottom<top)return fallback;
+   // Two sampled pixels of slack protect antialiased logo edges.
+   left=Math.max(0,left-2);top=Math.max(0,top-2);
+   right=Math.min(cw,right+2);bottom=Math.min(ch,bottom+2);
+   const sx=Math.floor(left*img.naturalWidth/cw);
+   const sy=Math.floor(top*img.naturalHeight/ch);
+   const ex=Math.ceil((right+1)*img.naturalWidth/cw);
+   const ey=Math.ceil((bottom+1)*img.naturalHeight/ch);
+   const bounds={sx,sy,sw:Math.max(1,Math.min(img.naturalWidth,ex)-sx),
+    sh:Math.max(1,Math.min(img.naturalHeight,ey)-sy)};
+   logoBoundsCache.set(img,bounds);
+   return bounds;
+  }catch(error){
+   console.warn("Cannot inspect logo transparency; using uncropped logo",error);
+   logoBoundsCache.set(img,fallback);
+   return fallback;
+  }
+ }
  function draw(args){
   const {canvas,p,teamInfo={},image,logos={},wins={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",displayName=null,displayNumber=null}=args;
   const ctx=canvas.getContext("2d");const pitcher=p?.kind==="pitcher";
@@ -55,9 +94,14 @@ window.RKBOCard=(()=>{
   if(fa&&p)write(ctx,"FA    "+(faGrade||"C")+"등급",midpoint,211,18,"center",true,"#ffe000");
   const logo=logos[current];
   if(logo&&logo.complete&&logo.naturalWidth){
-   const maxW=W*.21,maxH=H0*.96,ratio=Math.min(maxW/logo.naturalWidth,maxH/logo.naturalHeight);
-   const w=logo.naturalWidth*ratio,h=logo.naturalHeight*ratio;
-   ctx.drawImage(logo,W-47-maxW/2-w/2,(H0-h)/2,w,h);
+   // Crop only transparent padding from the source logo, keeping all visible artwork.
+   // This lets every team's header mark fill the original spreadsheet-sized logo area.
+   const bounds=visibleLogoBounds(logo);
+   const maxW=W*.30,maxH=H0*.96;
+   const ratio=Math.min(maxW/bounds.sw,maxH/bounds.sh);
+   const w=bounds.sw*ratio,h=bounds.sh*ratio;
+   const rightMargin=W*.056;
+   ctx.drawImage(logo,bounds.sx,bounds.sy,bounds.sw,bounds.sh,W-rightMargin-w,(H0-h)/2,w,h);
   }
   ctx.restore();
   const tableCols=columns;
