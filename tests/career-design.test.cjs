@@ -44,7 +44,7 @@ for(const grade of ["A","B","C"]){
  assert.ok(parseFloat(subtitle.font.match(/\d+/)?.[0])>=30,"Subtitle should be larger");
  const badge=images.find(x=>x[0]===rowSprite);
  assert.ok(badge,"Provided small circular team logo must be used");
- assert.deepEqual(badge.slice(1,5),[144,0,48,48],"Samsung icon should be tile #3");
+ assert.deepEqual(Array.from(badge.slice(1,5)),[144,0,48,48],"Samsung icon should be tile #3");
  assert.equal(badge[7],25);
  assert.ok(badge[5]>50,"Badge must be between season and team label, not glued to season");
  assert.ok(rects.some(r=>r.args[0]===0&&r.args[1]===231&&r.args[3]===1&&r.color==="#fff"),
