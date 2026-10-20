@@ -19,7 +19,9 @@ jobs:
       - run: |
           node --check app.js
           node --check player-filter.js
+          node --check github-db.js
           node --check card-renderer.js
           node --check rkbo-xls.js
           node tests/import.test.cjs
           node tests/player-filter.test.cjs
+          node tests/github-db.test.cjs
