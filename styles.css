@@ -38,3 +38,18 @@ textarea{width:100%;background:#0c1624;border:1px solid #3a4b65;color:#f7f8fa;bo
 .photo-upload-actions button{flex:0 0 auto;font-size:12px;padding:9px 12px}
 .photo-upload-actions button:disabled{opacity:.45;cursor:not-allowed}
 .cutout-status{display:block;margin:8px 0 13px;color:#9db4d1;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+
+/* Player identity metadata: English -> Korean display labels */
+.identity-editor{margin-top:12px;border:1px solid #3b4d65;border-radius:10px;background:#101c2d;padding:12px;display:grid;gap:12px}
+.identity-editor[hidden]{display:none!important}
+.identity-editor .fields.two{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:9px}
+.identity-editor label{display:grid;gap:6px;font-size:12px;color:#b9cce4;font-weight:700}
+.identity-editor input{min-width:0;width:100%;border:1px solid #3a4b65;background:#0b1523;color:white;border-radius:8px;padding:10px;font:inherit}
+.identity-editor small{color:#a2b8d5;font-size:11px;line-height:1.6;overflow-wrap:anywhere}
+.roster-unmatched{margin-top:12px}
+.roster-unmatched summary{color:#9fc5f0}
+.unmatched-roster-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;max-height:200px;overflow:auto}
+.unmatched-roster-list p{width:100%;margin:0 0 6px;font-size:11px;line-height:1.6;color:#a9b9cf}
+.unmatched-roster-list span{font-size:11px;border:1px solid #394962;border-radius:5px;padding:4px 7px;color:#e2ebfa;background:#1a2b42}
+.photo-size-note{display:block;color:#99b6d6;font-size:11px;line-height:1.5;margin:-5px 0 14px}
+@media(max-width:390px){.identity-editor .fields.two{grid-template-columns:1fr}}
