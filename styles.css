@@ -67,3 +67,19 @@ textarea{width:100%;background:#0c1624;border:1px solid #3a4b65;color:#f7f8fa;bo
 .preview-mode{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex:0 0 auto}
 .preview-mode select{width:auto;min-width:100px;padding:7px 24px 7px 10px;font-size:12px;font-weight:700;background:#192f48;color:#e6f1fc;border:1px solid #45627c;border-radius:8px}
 @media(max-width:450px){.post-season-upload{grid-template-columns:78px 65px 1fr;gap:6px}.preview-head{align-items:flex-start}.preview-mode{flex-wrap:wrap}.preview-mode select{min-width:90px}}
+
+/* Collapsible DB: starts folded; native <details> retains keyboard support. */
+.db-panel{padding:0;overflow:hidden}
+.db-summary{display:flex;align-items:center;gap:9px;justify-content:space-between;min-height:64px;padding:17px 20px;cursor:pointer;list-style:none}
+.db-summary::-webkit-details-marker{display:none}
+.db-summary::marker{content:""}
+.db-summary h2{margin:0;flex:1}
+.db-summary .db-expand-label{white-space:nowrap;font-size:11px;color:#a8d4ff;display:flex;align-items:center;gap:5px}
+.db-summary .db-chevron{font-size:17px;transition:transform .15s ease}
+.db-panel[open]>.db-summary .db-chevron{transform:rotate(180deg)}
+.db-panel[open]>.db-summary .db-expand-label{font-size:0}
+.db-panel[open]>.db-summary .db-chevron{font-size:17px}
+.db-summary:focus-visible{outline:2px solid #7db9ff;outline-offset:-3px;border-radius:13px}
+.db-panel-body{padding:0 20px 20px;border-top:1px solid #2c3a52}
+.db-panel-body>.help:first-child{margin-top:15px}
+#teamGradientStatus{margin:8px 1px 0;color:#9cb8d9}
