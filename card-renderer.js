@@ -15,6 +15,22 @@ window.RKBOCard=(()=>{
   ctx.font=(bold?"700 ":"500 ")+size+"px 'Noto Sans KR', sans-serif";
   ctx.textBaseline="middle";ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(String(val),x,y,max);
  }
+
+ function fitFont(ctx,value,ideal,min,maxW,bold=true){
+  let size=ideal;
+  while(size>min){
+   ctx.font=(bold?"700 ":"500 ")+size+"px 'Noto Sans KR', sans-serif";
+   if(ctx.measureText(String(value)).width<=maxW)return size;
+   size--;
+  }
+  return min;
+ }
+ function pitcherRole(p){
+  const s=RKBOXls.summary(p,"career")||p?.career||{};
+  const games=Number(s.G||0),starts=Number(s.GS||0);
+  return games>0&&starts/games>=0.3?"선발투수":"불펜투수";
+ }
+ const ROW_SPRITE_TEAMS={LG:0,DOO:1,KIA:2,SAM:3,HAN:4,LOT:5,SSG:6,NC:7,KT:8,KIW:9};
  function rate(stat,k){
   if(k==="OPS")return stat?.OBP!=null&&stat?.SLG!=null?(Number(stat.OBP)+Number(stat.SLG)).toFixed(3):"—";
   const v=stat?.[k];if(v==null||v==="")return "—";
@@ -65,12 +81,12 @@ window.RKBOCard=(()=>{
   }
  }
  function draw(args){
-  const {canvas,p,teamInfo={},image,logos={},wins={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",displayName=null,displayNumber=null}=args;
+  const {canvas,p,teamInfo={},image,logos={},rowSprite=null,wins={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",displayName=null,displayNumber=null}=args;
   const ctx=canvas.getContext("2d");const pitcher=p?.kind==="pitcher";
   const columns=pitcher?pit:bat;
   const W=pitcher?1606:1492,H0=pitcher?231:220,headH=28,rowH=29;
   const rows=Object.values(p?.seasons||{}).sort((a,b)=>a.year-b.year);
-  const height=H0+headH+(rows.length+2)*rowH+3;
+  const height=H0+headH+(rows.length+2)*rowH;
   canvas.width=W;canvas.height=height;
   const current=p?.team||"LG",theme=teamInfo[current]||["RKBO","#c50136","RKBO LEAGUE"],teamColor=theme[1]||"#c50136";
   ctx.fillStyle="#fff";ctx.fillRect(0,0,W,height);
@@ -87,11 +103,23 @@ window.RKBOCard=(()=>{
   }
   const midpoint=W*.505;
   const won=rows.filter(r=>r.team&&wins[r.year-1950]===r.team).length;
-  if(won)write(ctx,"★".repeat(won),midpoint,17,22,"center",true,"#ffdc36");
-  write(ctx,theme[2]||"RKBO",midpoint,49,34);
-  write(ctx,p?((displayNumber||p.number||"—")+". "+(displayName||p.name)):"RKBO CAREER MAKER",midpoint,113,53,"center",true,"#fff",W*.54);
-  write(ctx,"정규 시즌 통산 기록",midpoint,181,28);
-  if(fa&&p)write(ctx,"FA    "+(faGrade||"C")+"등급",midpoint,211,18,"center",true,"#ffe000");
+
+  const teamTitle=theme[2]||"RKBO";
+  const playerLabel=p?((displayNumber||p.number||"—")+". "+(displayName||p.name)):"RKBO CAREER MAKER";
+  const subtitle="정규 시즌 통산 기록";
+  if(won)write(ctx,"★".repeat(won),midpoint,16,22,"center",true,"#ffd33d");
+  write(ctx,teamTitle,midpoint,52,fitFont(ctx,teamTitle,40,29,W*.36),"center",true,"#fff");
+  write(ctx,playerLabel,midpoint,116,fitFont(ctx,playerLabel,63,44,W*.43),"center",true,"#fff");
+  write(ctx,subtitle,midpoint,179,fitFont(ctx,subtitle,33,27,W*.34),"center",true,"#fff");
+  if(fa&&p){
+   const grade=String(faGrade||"C").toUpperCase();
+   const faLabel=pitcher?("FA  "+grade+"등급  "+pitcherRole(p)):("FA  "+grade+"등급");
+   const faColor=grade==="A"?"#FFD34D":"#ffffff";
+   const fontSize=pitcher?23:20;
+   const faY=pitcher?216:209;
+   const maxLabelWidth=W*.35;
+   write(ctx,faLabel,midpoint,faY,fitFont(ctx,faLabel,fontSize,18,maxLabelWidth),"center",true,faColor);
+  }
   const logo=logos[current];
   if(logo&&logo.complete&&logo.naturalWidth){
    // Crop only transparent padding from the source logo, keeping all visible artwork.
@@ -110,7 +138,8 @@ window.RKBOCard=(()=>{
   const starts=[],widths=[];let next=0;
   for(const [,label,w] of tableCols){starts.push(next);widths.push(w*factor);next+=w*factor}
   ctx.fillStyle="#070707";ctx.fillRect(0,H0,W,headH);
-  tableCols.forEach(([key,label],i)=>write(ctx,label,starts[i]+widths[i]/2,H0+headH/2,18,"center",true,"#fff",widths[i]-1));
+  ctx.fillStyle="#fff";ctx.fillRect(0,H0,W,1);
+  tableCols.forEach(([key,label],i)=>write(ctx,label,starts[i]+widths[i]/2,H0+headH/2+1,fitFont(ctx,label,19,15,widths[i]-2),"center",true,"#fff"));
   const koreanTeam={KIA:"KIA",HAN:"한화",SAM:"삼성",LOT:"롯데",LG:"LG",DOO:"두산",SSG:"SSG",NC:"NC",SK:"SK",KT:"KT",KIW:"키움"};
  const entryRows=[
     ...rows.map(r=>({...r,title:(r.year-1950)+"차"})),
@@ -119,30 +148,39 @@ window.RKBOCard=(()=>{
   ];
   // Use actual full career, not a hard-coded 4 seasons, for the total display label.
   entryRows[rows.length].title=rows.length+"시즌 통산";
-  const years=new Set();
   entryRows.forEach((r,i)=>{
    const y=H0+headH+i*rowH;
    const rc=r.total?"#000":(teamInfo[r.team]?.[1]||"#31465c");
    ctx.fillStyle=rc;ctx.fillRect(0,y,W,rowH);
    ctx.fillStyle="#fff";ctx.fillRect(0,y,W,2);
    if(r.total){
-    write(ctx,r.title,starts[0]+(widths[0]+widths[1])/2,y+16,16,"center",true,"#fff",widths[0]+widths[1]-8);
+    write(ctx,r.title,starts[0]+(widths[0]+widths[1])/2,y+16,17,"center",true,"#fff",widths[0]+widths[1]-8);
    }else{
-    const rowlogo=logos[r.team]; const wYear=widths[0],wTeam=widths[1];
-    write(ctx,r.title,4,y+17,17,"left",true);
-    if(rowlogo&&rowlogo.complete&&rowlogo.naturalWidth){
-     ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(starts[1]+13,y+rowH/2,12,0,Math.PI*2);ctx.fill();
+    const rowlogo=logos[r.team],wTeam=widths[1];
+    const iconX=starts[1]+wTeam*.29,iconY=y+rowH/2,iconSize=25;
+    write(ctx,r.title,4,y+17,18,"left",true);
+    const index=ROW_SPRITE_TEAMS[r.team];
+    if(rowSprite&&rowSprite.complete&&rowSprite.naturalWidth&&index!==undefined){
+     const tile=64;
+     ctx.drawImage(rowSprite,(index%5)*tile,Math.floor(index/5)*tile,tile,tile,
+       iconX-iconSize/2,iconY-iconSize/2,iconSize,iconSize);
+    }else if(rowlogo&&rowlogo.complete&&rowlogo.naturalWidth){
+     // Historical SK has no user-provided badge; keep a round fallback.
+     ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(iconX,iconY,12,0,Math.PI*2);ctx.fill();
      const ratio=Math.min(22/rowlogo.naturalWidth,22/rowlogo.naturalHeight);
      const ww=rowlogo.naturalWidth*ratio,hh=rowlogo.naturalHeight*ratio;
-     ctx.drawImage(rowlogo,starts[1]+13-ww/2,y+rowH/2-hh/2,ww,hh);
+     ctx.drawImage(rowlogo,iconX-ww/2,iconY-hh/2,ww,hh);
     }
-    write(ctx,koreanTeam[r.team]||"—",starts[1]+wTeam*.67,y+17,16,"center",true,"#fff",wTeam*.55);
+    write(ctx,koreanTeam[r.team]||"—",starts[1]+wTeam*.75,y+17,17,"center",true,"#fff",wTeam*.45);
    }
-   for(let j=2;j<tableCols.length;j++)write(ctx,rate(r.stats,tableCols[j][0]),starts[j]+widths[j]/2,y+17,16,"center",true,"#fff",widths[j]-3);
+   for(let j=2;j<tableCols.length;j++){
+    const value=rate(r.stats,tableCols[j][0]);
+    write(ctx,value,starts[j]+widths[j]/2,y+17,fitFont(ctx,value,18,15,widths[j]-3),"center",true,"#fff");
+   }
    // Summary first numeric falls at position 2, matching the original layout.
   });
-  ctx.fillStyle="#fff";ctx.fillRect(0,height-2,W,2);
+  ctx.fillStyle="#fff";ctx.fillRect(0,height-1,W,1);
   return {width:W,height,won};
  }
- return {draw,tint,bat,pit};
+ return {draw,tint,bat,pit,pitcherRole};
 })();
