@@ -1,6 +1,50 @@
 "use strict";
 const $=id=>document.getElementById(id);
 let championMap={};
+
+let originalPhotoFile=null,photoGeneration=0,cutoutBusy=false,cutoutModule=null;
+const CUTOUT_CONFIG={model:"isnet",output:{format:"image/png",quality:1}};
+function cutoutStatus(message){$("cutoutStatus").textContent=message}
+function photoButtons(){
+ $("cutoutBtn").disabled=!originalPhotoFile||cutoutBusy;
+ $("restorePhotoBtn").disabled=!originalPhotoFile||cutoutBusy;
+}
+function loadPhotoBlob(blob,version,label){
+ return new Promise((resolve,reject)=>{
+  const url=URL.createObjectURL(blob),img=new Image();
+  img.onload=()=>{
+   URL.revokeObjectURL(url);
+   if(version!==photoGeneration){resolve(false);return}
+   photo=img;draw();cutoutStatus(label);resolve(true);
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);reject(Error("이미지를 불러오지 못했습니다."))};
+  img.src=url;
+ });
+}
+async function doCutout(){
+ if(!originalPhotoFile||cutoutBusy)return;
+ const version=photoGeneration;
+ cutoutBusy=true;photoButtons();
+ try{
+  cutoutStatus("AI 누끼 모델 준비 중 · 최초 실행은 다운로드로 오래 걸릴 수 있습니다.");
+  if(!cutoutModule)cutoutModule=await import("https://esm.sh/@imgly/background-removal@1.5.6");
+  const progress=(key,current,total)=>{
+   if(version===photoGeneration)cutoutStatus("AI 누끼 처리 중 · "+key+" "+Math.round(current/Math.max(1,total)*100)+"%");
+  };
+  const run=device=>cutoutModule.removeBackground(originalPhotoFile,{...CUTOUT_CONFIG,device,progress});
+  let result;
+  if(typeof navigator!=="undefined"&&navigator.gpu){
+   try{cutoutStatus("AI 누끼 · WebGPU 처리 중...");result=await run("gpu")}
+   catch(error){console.warn("WebGPU 누끼 실패, CPU 재시도",error);cutoutStatus("GPU 처리 실패 · CPU로 재시도 중...");result=await run("cpu")}
+  }else{cutoutStatus("AI 누끼 · CPU/WASM 처리 중...");result=await run("cpu")}
+  if(version!==photoGeneration)return;
+  await loadPhotoBlob(result,version,"AI 누끼 적용 완료 · 투명 배경 PNG로 출력됩니다.");
+ }catch(error){
+  console.error("AI 누끼 오류",error);
+  if(version===photoGeneration)cutoutStatus("AI 누끼 실패: "+error.message+" · 원본 사진은 유지됩니다.");
+ }finally{cutoutBusy=false;photoButtons()}
+}
+
 const TEAM={
  DOO:["두산 베어스","#003468","DOOSAN BEARS"],HAN:["한화 이글스","#ea580c","HANWHA EAGLES"],
  KIA:["KIA 타이거즈","#cc1129","KIA TIGERS"],LG:["LG 트윈스","#c30434","LG TWINS"],
@@ -344,12 +388,26 @@ async function init(){
  $("githubLoad").addEventListener("click",()=>loadCloud());
  $("githubSave").addEventListener("click",publishCloud);
 
- $("playerSelect").addEventListener("change",()=>{selectedId=$("playerSelect").value;photo=null;$("photoInput").value="";$("faCheck").checked=false;$("faGrade").disabled=true;draw()});
+ $("playerSelect").addEventListener("change",()=>{selectedId=$("playerSelect").value;photoGeneration++;photo=null;originalPhotoFile=null;$("photoInput").value="";photoButtons();cutoutStatus("사진을 선택하면 AI 누끼를 사용할 수 있습니다.");$("faCheck").checked=false;$("faGrade").disabled=true;draw()});
  $("xlsInput").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;try{report("RKBO XLS 읽는 중...");const parsed=RKBOXls.parse(await file.arrayBuffer());const result=RKBOXls.reconcile(players,RKBOXls.group(parsed));players=result.players;await store();populate();report("XLS "+parsed.length+"개 기록 · 연결 "+result.info.linked+"명 · 신규 "+result.info.created+"명 · 중복·충돌 "+result.info.conflicts+"건 · 판정 보류 "+result.info.ambiguous+"명");}catch(e){console.error(e);report("XLS 불러오기 실패: "+e.message)}e.target.value=""});
  for(const id of ["bgStyle","bgColor2","bgAngle"])$(id).addEventListener("change",draw);
  $("saveChampions").onclick=()=>{const obj={};let errors=[];for(const line of $("champions").value.split(/\r?\n/)){if(!line.trim()||line.trim().startsWith("#"))continue;const m=line.trim().match(/^(\d+)\s*[,;\t]\s*(DOO|HAN|KIA|LG|LOT|NC|SAM|SSG|KT|KIW|SK)$/i);if(!m){errors.push(line);continue}obj[Number(m[1])]=m[2].toUpperCase()}if(errors.length){report("우승팀 입력 형식 오류: "+errors.slice(0,3).join(" / "));return}championMap=obj;localStorage.setItem("rkbo-champions",JSON.stringify(championMap));report("우승 시즌 "+Object.keys(obj).length+"개 저장");draw()};
  $("zipInput").addEventListener("change",async e=>{if(e.target.files[0])await importZip(e.target.files[0]);e.target.value=""});
- $("photoInput").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;const object=URL.createObjectURL(file),img=new Image();img.onload=()=>{photo=img;URL.revokeObjectURL(object);draw()};img.onerror=()=>{URL.revokeObjectURL(object);report("PNG 이미지를 읽을 수 없습니다.")};img.src=object});
+ $("photoInput").addEventListener("change",async e=>{
+  const file=e.target.files[0];if(!file)return;
+  if(!["image/png","image/jpeg","image/webp"].includes(file.type)){
+   cutoutStatus("PNG, JPG, WEBP 파일만 선택할 수 있습니다.");return;
+  }
+  const version=++photoGeneration;originalPhotoFile=file;photoButtons();
+  try{await loadPhotoBlob(file,version,"원본 사진 적용됨 · AI 누끼를 누르면 배경을 제거합니다.")}
+  catch(error){if(version===photoGeneration){originalPhotoFile=null;photoButtons();cutoutStatus(error.message)}}
+ });
+ $("cutoutBtn").addEventListener("click",doCutout);
+ $("restorePhotoBtn").addEventListener("click",async()=>{
+  if(!originalPhotoFile||cutoutBusy)return;
+  try{await loadPhotoBlob(originalPhotoFile,photoGeneration,"원본 사진 복원 완료")}
+  catch(error){cutoutStatus(error.message)}
+ });
  for(const id of ["zoom","offsetX","offsetY"])$(id).addEventListener("input",()=>{$(id+"Val").textContent=$(id).value+(id==="zoom"?"%":"");draw()});
  $("resetPhoto").onclick=()=>{for(const id of ["zoom","offsetX","offsetY"]){$(id).value=id==="zoom"?100:0;$(id+"Val").textContent=$(id).value+(id==="zoom"?"%":"")}draw()};
  $("faCheck").onchange=()=>{$("faGrade").disabled=!$("faCheck").checked;if($("faCheck").checked&&!$("faGrade").value)$("faGrade").value=computeFA(players[selectedId]||{kind:"batter"});draw()};
