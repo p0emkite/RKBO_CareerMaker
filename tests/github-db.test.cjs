@@ -37,14 +37,24 @@ const db=ctx.window.RKBOGitHubDB;
  const loaded=await db.read();
  assert.equal(loaded.data.currentSeason,60);
  assert.equal(loaded.data.players[42].name,"김츠키");
+ assert.equal(Object.keys(loaded.data.teamGradients).length,0,"old GitHub snapshots should load without gradients");
  assert.equal(db.getKnownSha(),"before");
  await assert.rejects(()=>db.save(initial),/토큰/);
  await db.connect("github_pat_FAKE_FOR_TESTING");
  assert.equal(db.isConnected(),true);
- const saved=await db.save({...initial,currentSeason:61});
+ const saved=await db.save({...initial,currentSeason:61,
+  players:{"42":{...initial.players[42],postSeasons:{"2010":{year:2010,team:"SAM",stats:{G:"3",ERA:"3.00"}}}}},
+  teamGradients:{SAM:{style:"gradient",color2:"#123ABC",angle:"-45"},KIA:{style:"solid",color2:"#000000",angle:90},
+    INVALID:{style:"gradient",color2:"#ffffff",angle:"0"}}});
  assert.equal(saved.sha,"after");
  assert.equal(serverContent.currentSeason,61);
  assert.equal(serverContent.players[42].name,"김츠키");
+ assert.equal(serverContent.players[42].postSeasons[2010].stats.ERA,"3.00");
+ assert.equal(serverContent.teamGradients.SAM.style,"gradient");
+ assert.equal(serverContent.teamGradients.SAM.color2,"#123abc");
+ assert.equal(serverContent.teamGradients.SAM.angle,"-45");
+ assert.equal(serverContent.teamGradients.KIA.angle,"90");
+ assert.equal(serverContent.teamGradients.INVALID,undefined);
  assert.ok(lastPut.content);
  sha="externally-updated";
  await assert.rejects(()=>db.save(initial),/변경/);
