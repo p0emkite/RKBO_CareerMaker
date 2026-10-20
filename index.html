@@ -8,14 +8,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=20261020-6">
+<link rel="stylesheet" href="./styles.css?v=20261020-7">
 <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script defer src="./rkbo-xls.js"></script>
-<script defer src="./card-renderer.js?v=20261020-3"></script>
+<script defer src="./roster.js?v=20261020-7"></script>
+<script defer src="./champions.js?v=20261020-7"></script>
+<script defer src="./card-renderer.js?v=20261020-7"></script>
 <script defer src="./player-filter.js?v=20261020-3"></script>
 <script defer src="./github-db.js?v=20261020-4"></script>
-<script defer src="./app.js?v=20261020-6"></script>
+<script defer src="./app.js?v=20261020-7"></script>
 </head>
 <body>
 <header class="topbar">
@@ -81,6 +83,18 @@
         </div>
       </div>
       <div id="playerInfo" class="player-info">선수를 선택하면 시즌별 기록과 ML Career가 자동 표시됩니다.</div>
+      <div id="identityEditor" class="identity-editor" hidden>
+        <div class="fields two">
+          <label for="koreanNameInput">한글 닉네임 <input id="koreanNameInput" type="text" autocomplete="off" placeholder="매칭되지 않으면 직접 입력"></label>
+          <label for="jerseyNumberInput">등번호 <input id="jerseyNumberInput" type="text" inputmode="text" maxlength="6" placeholder="예: 16, 00"></label>
+        </div>
+        <div class="action-row"><button id="saveIdentity" class="secondary" type="button">닉네임·등번호 저장</button><button id="clearIdentity" class="secondary" type="button">수동 수정 초기화</button></div>
+        <small id="identityStatus" role="status" aria-live="polite">CSV와 매칭된 한글 이름과 등번호가 자동으로 적용됩니다.</small>
+      </div>
+      <details class="roster-unmatched">
+        <summary id="unmatchedRosterSummary">60차 등번호표 미매칭 선수 확인</summary>
+        <div id="unmatchedRosterDetails" class="unmatched-roster-list">매칭표를 불러오는 중입니다.</div>
+      </details>
     </section>
     <section class="panel">
       <div class="section-title"><h2>03 · 이미지 / 표시 설정</h2></div>
@@ -91,6 +105,7 @@
       </div>
       <input id="photoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
       <small id="cutoutStatus" class="cutout-status" role="status" aria-live="polite">사진을 선택하면 AI 누끼를 사용할 수 있습니다. 최초 실행 시 모델 다운로드가 필요합니다.</small>
+      <small class="photo-size-note">삽입 사진 기준 규격: <strong>761 × 365px</strong> · 투명 PNG 권장 · 비율 유지</small>
       <div class="fields two">
         <label>사진 확대 <input id="zoom" type="range" min="40" max="260" value="100"><output id="zoomVal">100%</output></label>
         <label>가로 위치 <input id="offsetX" type="range" min="-250" max="250" value="0"><output id="offsetXVal">0</output></label>
@@ -103,11 +118,18 @@
         <p class="hint">기존 구글 시트 FA 수식 기준으로 등급을 자동 제안하며 필요할 때 수동 변경할 수 있습니다.</p>
       </div>
     </section>
-    <section class="panel"><div class="section-title"><h2>04 · 우승 시즌 관리</h2></div><p class="help">우승 연도와 구단을 지정하면 해당 구단에서 뛰었던 선수의 헤더에 우승 시즌 수만큼 별이 표시됩니다. 입력 예: <code>56,LG</code></p><textarea id="champions" rows="5" placeholder="시즌 차수,구단 코드&#10;56,LG&#10;57,SAM"></textarea><div class="action-row"><button id="saveChampions" class="secondary">우승 시즌 정보 저장</button></div><p class="hint">우승 구단 정보는 업로드 파일에 확실히 존재하지 않으므로 임의 자동 생성하지 않습니다.</p></section><section class="panel">
+    <section class="panel">
+      <div class="section-title"><h2>04 · 우승 시즌 관리</h2><span id="championCount" class="status">확인 중</span></div>
+      <p class="help">22~60차 우승팀 39개를 미리 등록했어. 수정이 필요하면 직접 붙여넣고 저장할 수 있어. <strong>마크다운 표, 한글 구단명, 쉼표 구분</strong>을 모두 지원해.</p>
+      <textarea id="champions" rows="6" placeholder="60,KIA&#10;59,KIA&#10;57,삼성"></textarea>
+      <div class="action-row"><button id="saveChampions" class="secondary" type="button">우승 시즌 정보 저장</button><button id="resetChampions" class="secondary" type="button">기본 우승 기록 복원</button></div>
+      <p id="championSaveStatus" class="hint" role="status" aria-live="polite">우승 시즌을 불러오는 중입니다.</p>
+    </section>
+    <section class="panel">
       <div class="section-title"><h2>05 · PNG 저장</h2></div>
       <p class="help">선수의 실제 ML 시즌 수에 맞춰 표 높이가 자동 확장됩니다. A등급 FA는 노란색 글씨로 표시됩니다.</p>
       <button id="downloadBtn" type="button" class="primary" disabled>통산 PNG로 저장 ↓</button>
-      <p class="hint">베타 출력 크기: 너비 1640px, 높이 시즌 수에 따라 자동 조절. 최종 규격은 템플릿 파일을 받으면 반영합니다.</p>
+      <p class="hint">통산 표 너비: 타자 1492px / 투수 1606px, 높이는 시즌 수에 따라 변동. 선수 사진 기준: 761×365px.</p>
     </section>
   </section>
   <section class="preview-panel">
