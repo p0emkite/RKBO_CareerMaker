@@ -25,3 +25,4 @@ jobs:
           node tests/import.test.cjs
           node tests/player-filter.test.cjs
           node tests/github-db.test.cjs
+          node tests/ui-layout.test.cjs
