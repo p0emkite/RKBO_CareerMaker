@@ -17,6 +17,21 @@ window.RKBOGitHubDB = (() => {
       binary+=String.fromCharCode(...bytes.subarray(i,i+32768));
     return btoa(binary);
   }
+  // Settings are public, non-sensitive and keyed by the player's latest team.
+  const validTeams=new Set(["KIA","HAN","SAM","LOT","LG","DOO","SSG","NC","SK","KT","KIW"]);
+  const validDirections=new Set(["0","90","45","-45"]);
+  function normalizeTeamGradients(source){
+    if(!source||typeof source!=="object"||Array.isArray(source))return {};
+    const output={};
+    for(const [code,item] of Object.entries(source)){
+      if(!validTeams.has(code)||!item||typeof item!=="object")continue;
+      const color2=typeof item.color2==="string"&&/^#[0-9a-fA-F]{6}$/.test(item.color2)
+        ?item.color2.toLowerCase():"#17263c";
+      const angle=validDirections.has(String(item.angle))?String(item.angle):"0";
+      output[code]={style:item.style==="gradient"?"gradient":"solid",color2,angle};
+    }
+    return output;
+  }
   function validate(raw){
     if(!raw||typeof raw!=="object"||![1,2].includes(raw.schema)||!raw.players||typeof raw.players!=="object"||Array.isArray(raw.players))
       throw Error("GitHub DB 형식이 올바르지 않습니다.");
@@ -24,6 +39,7 @@ window.RKBOGitHubDB = (() => {
     return {schema:2,updatedAt:raw.updatedAt||null,
       currentSeason:Number.isInteger(Number(n))&&n!==null&&n!==""&&Number(n)>=1&&Number(n)<=999?Number(n):null,
       champions:raw.champions&&typeof raw.champions==="object"&&!Array.isArray(raw.champions)?raw.champions:{},
+      teamGradients:normalizeTeamGradients(raw.teamGradients),
       players:raw.players};
   }
   async function request(url,options={}){
@@ -85,5 +101,5 @@ window.RKBOGitHubDB = (() => {
     return {sha:knownSha,updatedAt:data.updatedAt,commit:result.commit?.sha||null};
   }
   function getKnownSha(){return knownSha}
-  return {read,save,connect,disconnect,isConnected,getKnownSha,validate,decode,encode,repository:owner+"/"+repo,path};
+  return {read,save,connect,disconnect,isConnected,getKnownSha,validate,normalizeTeamGradients,decode,encode,repository:owner+"/"+repo,path};
 })();
