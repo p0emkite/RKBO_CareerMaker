@@ -8,16 +8,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=20261020-7">
+<link rel="stylesheet" href="./styles.css?v=20261021-postseason-v1">
 <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script defer src="./rkbo-xls.js"></script>
+<script defer src="./postseason.js?v=20261021-postseason-v1"></script>
 <script defer src="./roster.js?v=20261020-7"></script>
 <script defer src="./champions.js?v=20261020-7"></script>
-<script defer src="./card-renderer.js?v=20261021-fa-roles-round-logos"></script>
+<script defer src="./card-renderer.js?v=20261021-postseason-v1"></script>
 <script defer src="./player-filter.js?v=20261020-3"></script>
 <script defer src="./github-db.js?v=20261020-4"></script>
-<script defer src="./app.js?v=20261021-fa-roles-round-logos"></script>
+<script defer src="./app.js?v=20261021-postseason-v1"></script>
 </head>
 <body>
 <header class="topbar">
@@ -31,7 +32,21 @@
       <p class="help">HHRecord ZIP의 <code>Results/Players/p_*.htm</code>에서 선수별 역대 기록, LAST 3, ML Career를 자동 추출합니다.</p>
       <label class="upload-label" for="zipInput">+ HHRecord 시즌 ZIP 추가 / 업데이트</label>
       <input id="zipInput" type="file" accept=".zip,application/zip" hidden>
-      <label class="upload-label subdued" for="xlsInput">+ RKBO.xls 시즌 기록 추가 / 업데이트</label><input id="xlsInput" type="file" accept=".xls,.xlsx" hidden><p id="importProgress" class="hint">최초 한 번 가져오면 이 브라우저에 선수 데이터가 보관됩니다.</p>
+      <label class="upload-label subdued" for="xlsInput">+ RKBO.xls 시즌 기록 추가 / 업데이트</label><input id="xlsInput" type="file" accept=".xls,.xlsx" hidden>
+      <div class="postseason-import">
+        <div class="section-title"><h3>포스트시즌 기록</h3><span id="postseasonDbStatus" class="status">0개 시즌 기록</span></div>
+        <label class="upload-label subdued" for="postHistoryInput">+ 기존 포시 통산 XLSX (35~59차) 등록</label>
+        <input id="postHistoryInput" type="file" accept=".xlsx,.xls" hidden>
+        <div class="post-season-upload">
+          <label for="postSeasonInput">이번 ZIP의 시즌 차수</label>
+          <input id="postSeasonInput" type="number" min="1" max="999" step="1" inputmode="numeric" placeholder="예: 60">
+          <label class="upload-label" for="postZipInput">+ 포스트시즌 개인성적 ZIP 추가</label>
+          <input id="postZipInput" type="file" accept=".zip,application/zip" hidden>
+        </div>
+        <p class="hint" id="postImportStatus" role="status" aria-live="polite">
+          ZIP 내부의 ‘2002 Season Stats’는 무시하고 위에 직접 입력한 차수로 등록해요. 동일 선수·시즌 기록은 갱신됩니다.
+        </p>
+      </div><p id="importProgress" class="hint">최초 한 번 가져오면 이 브라우저에 선수 데이터가 보관됩니다.</p>
       <div class="action-row">
         <button id="exportDb" type="button" class="secondary">DB JSON 백업</button>
         <label class="secondary button-label" for="importDb">DB 백업 복원</label>
@@ -133,7 +148,15 @@
     </section>
   </section>
   <section class="preview-panel">
-    <div class="preview-head"><div><h2>라이브 미리보기</h2><p id="previewDescription">데이터를 가져온 뒤 선수를 선택하세요.</p></div><span id="kindBadge" class="kind">CAREER</span></div>
+    <div class="preview-head"><div><h2>라이브 미리보기</h2><p id="previewDescription">데이터를 가져온 뒤 선수를 선택하세요.</p></div>
+    <div class="preview-mode">
+      <label for="careerModeSelect" class="visually-hidden">통산 종류</label>
+      <select id="careerModeSelect" aria-label="정규 시즌 또는 포스트시즌 통산 선택">
+        <option value="regular">정규</option>
+        <option value="postseason">포스트시즌</option>
+      </select>
+      <span id="kindBadge" class="kind">CAREER</span>
+    </div></div>
     <div class="canvas-wrap"><canvas id="cardCanvas" width="1640" height="920" aria-label="선수 통산 이미지 미리보기"></canvas></div>
     <p class="footnote">경력 초반 일부 시즌은 HHRecord 원본에 소속팀이 없을 수 있습니다. 미확인 시즌은 —로 표시하여 잘못된 팀 표기를 방지합니다.</p>
   </section>
