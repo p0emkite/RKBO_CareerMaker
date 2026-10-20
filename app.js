@@ -114,14 +114,18 @@ function populate(){
  updatePlayerList();
 }
 function updatePlayerList(){
- const team=$("teamSelect").value,q=$("playerSearch").value.trim().toLowerCase();
- const list=Object.values(players).filter(p=>(team==="ALL"||p.team===team)&&(p.name.toLowerCase().includes(q)||p.id.includes(q))).sort((a,b)=>a.name.localeCompare(b.name));
+ const team=$("teamSelect").value,q=$("playerSearch").value.trim();
+ const year=RKBOPlayerFilter.latestSeason(players),includeRetired=$("includeRetired").checked;
+ const list=RKBOPlayerFilter.list(players,{team,query:q,includeRetired,year});
+ $("latestSeasonHint").textContent=year
+  ?("최신 "+(year-1950)+"차 시즌 · "+(includeRetired?"은퇴 선수 포함":"해당 시즌 출전 선수만 표시"))
+  :"기록을 업로드하면 최신 시즌을 자동 판별합니다.";
  $("playerSelect").replaceChildren(new Option(list.length?list.length+"명 중 선수 선택":"검색 결과 없음",""),...list.map(p=>new Option(p.name+" · "+toText(p.team)+" · "+(p.kind==="pitcher"?"투수":"타자"),p.id)));
  if(list.some(p=>p.id===selectedId))$("playerSelect").value=selectedId;else{selectedId="";$("playerSelect").value=""}
  draw();
 }
 function roundedRect(ctx,x,y,w,h,r,fill){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill()}
-function text(ctx,str,x,y,opt={}){ctx.fillStyle=opt.color||"#122139";ctx.font=(opt.bold?"700 ":"500 ")+(opt.size||23)+"px Arial, 'Malgun Gothic',sans-serif";ctx.textAlign=opt.align||"left";ctx.textBaseline="middle";ctx.fillText(String(str),x,y,opt.max||1e4)}
+function text(ctx,str,x,y,opt={}){ctx.fillStyle=opt.color||"#122139";ctx.font=(opt.bold?"700 ":"500 ")+(opt.size||23)+"px 'Noto Sans KR',sans-serif";ctx.textAlign=opt.align||"left";ctx.textBaseline="middle";ctx.fillText(String(str),x,y,opt.max||1e4)}
 function fmt(s,key){
  const v=s?.[key];
  if(key==="OPS")return s?.OBP!=null&&s?.SLG!=null?(Number(s.OBP)+Number(s.SLG)).toFixed(3):"—";
@@ -208,7 +212,7 @@ function draw(){
 }
 async function init(){
  try{await restore();try{championMap=JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}catch(e){championMap={}}; $("champions").value=Object.entries(championMap).sort((a,b)=>Number(a[0])-Number(b[0])).map(([a,b])=>a+","+b).join("\n");populate();report("브라우저 DB 준비 완료 · HHRecord ZIP을 업로드할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
- for(const id of ["teamSelect","playerSearch"])$(id).addEventListener(id==="playerSearch"?"input":"change",updatePlayerList);
+ for(const id of ["teamSelect","playerSearch","includeRetired"])$(id).addEventListener(id==="playerSearch"?"input":"change",updatePlayerList);
  $("playerSelect").addEventListener("change",()=>{selectedId=$("playerSelect").value;photo=null;$("photoInput").value="";$("faCheck").checked=false;$("faGrade").disabled=true;draw()});
  $("xlsInput").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;try{report("RKBO XLS 읽는 중...");const parsed=RKBOXls.parse(await file.arrayBuffer());const result=RKBOXls.reconcile(players,RKBOXls.group(parsed));players=result.players;await store();populate();report("XLS "+parsed.length+"개 기록 · 연결 "+result.info.linked+"명 · 신규 "+result.info.created+"명 · 중복·충돌 "+result.info.conflicts+"건 · 판정 보류 "+result.info.ambiguous+"명");}catch(e){console.error(e);report("XLS 불러오기 실패: "+e.message)}e.target.value=""});
  for(const id of ["bgStyle","bgColor2","bgAngle"])$(id).addEventListener("change",draw);
@@ -219,10 +223,10 @@ async function init(){
  $("resetPhoto").onclick=()=>{for(const id of ["zoom","offsetX","offsetY"]){$(id).value=id==="zoom"?100:0;$(id+"Val").textContent=$(id).value+(id==="zoom"?"%":"")}draw()};
  $("faCheck").onchange=()=>{$("faGrade").disabled=!$("faCheck").checked;if($("faCheck").checked&&!$("faGrade").value)$("faGrade").value=computeFA(players[selectedId]||{kind:"batter"});draw()};
  $("faGrade").onchange=draw;
- $("downloadBtn").onclick=()=>{const p=players[selectedId];if(!p)return;const a=document.createElement("a");a.href=$("cardCanvas").toDataURL("image/png");a.download="RKBO_Career_"+p.name.replace(/[^a-zA-Z0-9가-힣_-]/g,"_")+".png";a.click()};
+ $("downloadBtn").onclick=async()=>{const p=players[selectedId];if(!p)return;try{await document.fonts.load('700 20px "Noto Sans KR"');await document.fonts.ready;}catch(e){console.warn("Font loading failed",e)}draw();const a=document.createElement("a");a.href=$("cardCanvas").toDataURL("image/png");a.download="RKBO_Career_"+p.name.replace(/[^a-zA-Z0-9가-힣_-]/g,"_")+".png";a.click()};
  $("exportDb").onclick=()=>{const blob=new Blob([JSON.stringify({schema:1,exportedAt:new Date().toISOString(),players})],{type:"application/json"});const a=document.createElement("a"),u=URL.createObjectURL(blob);a.href=u;a.download="RKBO_Career_DB_"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
  $("importDb").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const payload=JSON.parse(await f.text());if(payload.schema!==1||!payload.players||typeof payload.players!=="object")throw Error("지원되지 않는 백업입니다.");for(const p of Object.values(payload.players)){if(p&&p.id&&p.seasons&&p.kind)players[p.id]=mergeRecord(players[p.id],p)}await store();populate();report("백업 복원 완료: "+Object.keys(players).length+"명")}catch(err){report("복원 실패: "+err.message)}e.target.value=""};
  $("resetDb").onclick=async()=>{if(!confirm("이 브라우저의 RKBO 선수 DB를 모두 지울까요?"))return;players={};await store();selectedId="";populate();report("DB 초기화 완료")};
  draw();
 }
-document.addEventListener("DOMContentLoaded",init);
+document.addEventListener("DOMContentLoaded",()=>{init();if(document.fonts)document.fonts.ready.then(draw).catch(()=>{});});
