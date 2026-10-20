@@ -8,14 +8,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=20261020-5">
+<link rel="stylesheet" href="./styles.css?v=20261020-6">
 <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script defer src="./rkbo-xls.js"></script>
 <script defer src="./card-renderer.js?v=20261020-3"></script>
 <script defer src="./player-filter.js?v=20261020-3"></script>
 <script defer src="./github-db.js?v=20261020-4"></script>
-<script defer src="./app.js?v=20261020-5"></script>
+<script defer src="./app.js?v=20261020-6"></script>
 </head>
 <body>
 <header class="topbar">
@@ -84,8 +84,13 @@
     </section>
     <section class="panel">
       <div class="section-title"><h2>03 · 이미지 / 표시 설정</h2></div>
-      <label class="upload-label subdued" for="photoInput">+ 선수 PNG 사진 선택</label>
-      <input id="photoInput" type="file" accept="image/png" hidden>
+      <div class="photo-upload-actions">
+        <label class="upload-label subdued" for="photoInput">+ 선수 사진 선택</label>
+        <button id="cutoutBtn" class="secondary" type="button" disabled>AI 누끼</button>
+        <button id="restorePhotoBtn" class="secondary" type="button" disabled>원본 복원</button>
+      </div>
+      <input id="photoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+      <small id="cutoutStatus" class="cutout-status" role="status" aria-live="polite">사진을 선택하면 AI 누끼를 사용할 수 있습니다. 최초 실행 시 모델 다운로드가 필요합니다.</small>
       <div class="fields two">
         <label>사진 확대 <input id="zoom" type="range" min="40" max="260" value="100"><output id="zoomVal">100%</output></label>
         <label>가로 위치 <input id="offsetX" type="range" min="-250" max="250" value="0"><output id="offsetXVal">0</output></label>
