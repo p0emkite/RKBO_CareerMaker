@@ -2,3 +2,22 @@
 textarea{width:100%;background:#0c1624;border:1px solid #3a4b65;color:#f7f8fa;border-radius:8px;padding:10px 12px;resize:vertical;line-height:1.7;font-family:inherit;min-height:92px}input[type=color]{height:42px;width:100%;padding:3px;border:1px solid #405571;background:#122239;border-radius:8px}textarea:focus{outline:2px solid #3b98f6}
 
 .player-status-filter{display:flex;flex-direction:column;gap:6px;border:1px solid #34465f;border-radius:9px;background:#101c2c;padding:11px 12px}.player-status-filter .retired-toggle{display:flex;align-items:center;gap:9px;font-size:13px;color:#e6eef9;cursor:pointer}.retired-toggle input{width:17px;height:17px;accent-color:#68a9f6;margin:0}.player-status-filter small{font-size:11px;line-height:1.55;color:#9fb1c8}
+
+/* Manually configured season and GitHub-backed shared database */
+.season-settings{border:1px solid #364d6b;border-radius:10px;padding:12px;background:#0d1a2b;display:grid;gap:9px}
+.season-settings>label,.github-sync .fields label{font-size:12px;font-weight:700;color:#cfdef2;display:grid;gap:6px}
+.season-save-row{display:flex;gap:8px}
+.season-save-row input{min-width:0;flex:1;background:#0c1624;border:1px solid #3a4b65;color:#fff;border-radius:8px;padding:10px;font:inherit}
+.season-save-row button{white-space:nowrap}
+.season-settings small{color:#a3b7cf;font-size:11px;line-height:1.6}
+.github-sync{border-top:1px solid #2f405a;padding-top:18px;margin-top:17px;display:grid;gap:11px}
+.github-sync h3{margin:0;font-size:15px}
+.github-sync .section-title{margin-bottom:0}
+.github-sync .help{margin:0}
+.github-sync .fields input{background:#0c1624;border:1px solid #3a4b65;color:#fff;border-radius:8px;padding:12px;width:100%;font:inherit}
+.github-sync .action-row{align-items:stretch}
+.github-sync .github-db-actions{display:grid;grid-template-columns:1fr 1fr}
+.github-sync .github-db-actions button{width:100%;font-size:12px;padding:12px 8px}
+.github-sync .hint{margin:0}
+.github-sync .github-settings-link{font-size:12px;color:#91caff;text-decoration:underline}
+@media(max-width:420px){.github-sync .github-db-actions{grid-template-columns:1fr}}
