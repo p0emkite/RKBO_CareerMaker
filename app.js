@@ -475,16 +475,29 @@ function fmt(s,key){
  }
  return String(v);
 }
-function computeFA(p){
- const s=p.career||{}; if(p.kind==="batter"){
-  const a=Number(s.AVG||0),o=Number(s.OBP||0),sl=Number(s.SLG||0),ab=Number(s.AB||0);
-  const n=Number(a>=.3)+Number(o-a>=.08)+Number(sl-a>=.18);
-  return ab>=750?n>=2?"A":n===1?"B":"C":"C";
+// FA is based on the original Sheets' LAST 3 row, not lifetime ML Career.
+let faManualSelection=false,faSelectedPlayerId="";
+function computeFA(p){return RKBOFA.calculate(p).grade}
+function refreshFASelection(){
+ const p=players[selectedId];
+ if(selectedId!==faSelectedPlayerId){
+  faManualSelection=false;
+  faSelectedPlayerId=selectedId;
  }
- const games=Number(s.G||0),starts=Number(s.GS||0),ip=Number(s.IP||0);
- const starter=games>0&&starts/games>=.3;
- const n=Number(Number(s.AVG||1)<=.24)+Number(Number(s.OBP||1)<=.29)+Number(Number(s.SLG||1)<=.34);
- return ip>=(starter?300:120)?(n>=2?"A":n===1?"B":"C"):"C";
+ const result=RKBOFA.calculate(p);
+ if(!faManualSelection)$("faGrade").value=result.grade||"";
+ $("faGrade").disabled=!p||!$("faCheck").checked;
+ if(!p){
+  $("faAutoHint").textContent="선수를 선택하면 최근 3시즌 FA 등급을 자동 산정합니다.";
+  return result;
+ }
+ const grade=result.grade?result.grade+"등급":"산정 불가";
+ const description=result.role?" · "+result.role:"";
+ const estimate=result.approximate?" · 과거 시즌 데이터의 비율은 가중 추정값 (최종 확인 권장)":"";
+ const override=faManualSelection?" · 현재 수동 선택 중":"";
+ $("faAutoHint").textContent="자동 산정: "+grade+description+" · "+result.source+" · "+
+  result.reason+estimate+override;
+ return result;
 }
 function drawImageContain(ctx,img,x,y,w,h,zoom,dx,dy){
  const ratio=Math.min(w/img.width,h/img.height);
@@ -509,11 +522,13 @@ function draw(){
  if(window.RKBOCard){
   const p=players[selectedId],identity=rosterInfo(p);
   const mode=$("careerModeSelect").value;
-  const data=RKBOCard.draw({displayName:identity.displayName,displayNumber:identity.number,
+  const faResult=refreshFASelection();
+  const selectedGrade=faManualSelection?$("faGrade").value:faResult.grade;
+  const data=RKBOCard.draw({displayName:identity.displayName,displayNumber:identity.number,faRole:faResult.role,
    canvas:$("cardCanvas"),p,mode,teamInfo:TEAM,image:photo,logos,rowSprite,wins:championMap,
    gradient:$("bgStyle").value==="gradient",color2:$("bgColor2").value,angle:$("bgAngle").value,
    photoZoom:$("zoom").value,photoX:$("offsetX").value,photoY:$("offsetY").value,
-   fa:$("faCheck").checked,faGrade:$("faGrade").value||computeFA(p||{kind:"batter"})});
+   fa:$("faCheck").checked,faGrade:selectedGrade||""});
   $("downloadBtn").disabled=!p||(mode==="postseason"&&data.rows===0);
   $("playerInfo").textContent=p
    ?("선수 ID "+p.id+" · "+toText(p.team)+" · "+
@@ -611,7 +626,7 @@ async function init(){
  $("githubLoad").addEventListener("click",()=>loadCloud());
  $("githubSave").addEventListener("click",publishCloud);
 
- $("playerSelect").addEventListener("change",()=>{selectedId=$("playerSelect").value;showIdentityEditor();refreshTeamGradientFields();photoGeneration++;photo=null;originalPhotoFile=null;$("photoInput").value="";photoButtons();cutoutStatus("사진을 선택하면 AI 누끼를 사용할 수 있습니다.");$("faCheck").checked=false;$("faGrade").disabled=true;draw()});
+ $("playerSelect").addEventListener("change",()=>{selectedId=$("playerSelect").value;showIdentityEditor();refreshTeamGradientFields();photoGeneration++;photo=null;originalPhotoFile=null;$("photoInput").value="";photoButtons();cutoutStatus("사진을 선택하면 AI 누끼를 사용할 수 있습니다.");$("faCheck").checked=false;faManualSelection=false;faSelectedPlayerId="";$("faGrade").value="";draw()});
 
  $("saveIdentity").addEventListener("click",async()=>{
   const p=players[selectedId];if(!p)return;
@@ -679,8 +694,11 @@ async function init(){
  });
  for(const id of ["zoom","offsetX","offsetY"])$(id).addEventListener("input",()=>{$(id+"Val").textContent=$(id).value+(id==="zoom"?"%":"");draw()});
  $("resetPhoto").onclick=()=>{for(const id of ["zoom","offsetX","offsetY"]){$(id).value=id==="zoom"?100:0;$(id+"Val").textContent=$(id).value+(id==="zoom"?"%":"")}draw()};
- $("faCheck").onchange=()=>{$("faGrade").disabled=!$("faCheck").checked;if($("faCheck").checked&&!$("faGrade").value)$("faGrade").value=computeFA(players[selectedId]||{kind:"batter"});draw()};
- $("faGrade").onchange=draw;
+ $("faCheck").onchange=()=>{refreshFASelection();draw()};
+ $("faGrade").onchange=()=>{
+  faManualSelection=!!$("faGrade").value;
+  draw();
+ };
  $("downloadBtn").onclick=async()=>{const p=players[selectedId];if(!p)return;try{await document.fonts.load('700 20px "Noto Sans KR"');await document.fonts.ready;}catch(e){console.warn("Font loading failed",e)}draw();const a=document.createElement("a");a.href=$("cardCanvas").toDataURL("image/png");a.download="RKBO_"+($("careerModeSelect").value==="postseason"?"Postseason_":"Regular_")+"Career_"+p.name.replace(/[^a-zA-Z0-9가-힣_-]/g,"_")+".png";a.click()};
  $("exportDb").onclick=()=>{const blob=new Blob([JSON.stringify({schema:1,exportedAt:new Date().toISOString(),players})],{type:"application/json"});const a=document.createElement("a"),u=URL.createObjectURL(blob);a.href=u;a.download="RKBO_Career_DB_"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
  $("importDb").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const payload=JSON.parse(await f.text());if(payload.schema!==1||!payload.players||typeof payload.players!=="object")throw Error("지원되지 않는 백업입니다.");for(const p of Object.values(payload.players)){if(p&&p.id&&p.seasons&&p.kind)players[p.id]=mergeRecord(players[p.id],p)}await store();populate();report("백업 복원 완료: "+Object.keys(players).length+"명")}catch(err){report("복원 실패: "+err.message)}e.target.value=""};
