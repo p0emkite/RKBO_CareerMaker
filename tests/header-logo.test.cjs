@@ -18,7 +18,7 @@ const document={
 };
 const drawing={
  fillRect(){},beginPath(){},rect(){},clip(){},save(){},restore(){},
- arc(){},fill(){},fillText(){},drawImage(...args){draws.push(args);}
+ arc(){},fill(){},fillText(){},measureText(value){return {width:String(value).length*17}},drawImage(...args){draws.push(args);}
 };
 const canvas={width:0,height:0,getContext(){return drawing}};
 const context={window:{},document,console,
