@@ -1,6 +1,16 @@
 "use strict";
 window.RKBOCard=(()=>{
  const bat=[["year","시즌",48],["team","소속팀",100],["G","경기수",70],["AVG","타율",80],["OBP","출루율",80],["SLG","장타율",80],["OPS","OPS",80],["AB","타수",76],["H","안타",75],["2B","2루타",72],["3B","3루타",72],["HR","홈런",70],["R","득점",70],["RBI","타점",70],["BB","볼넷",70],["K","삼진",70],["SB","도루",70],["CS","도루 실패",90]];
+ const postBat=[["champ","우승",47],["year","시즌",48],["team","소속팀",100],["POS","포지션",62],
+  ["G","경기수",70],["AVG","타율",80],["OBP","출루율",80],["SLG","장타율",80],["OPS","OPS",80],
+  ["AB","타수",76],["H","안타",75],["2B","2루타",72],["3B","3루타",72],["HR","홈런",70],
+  ["R","득점",70],["RBI","타점",70],["BB","볼넷",70],["K","삼진",70],["SB","도루",70],["CS","도루실패",86]];
+ const postPit=[["champ","우승",48],["year","시즌",48],["team","소속팀",95],
+  ["ERA","방어율",71],["W","승",51],["L","패",51],["SV","세",51],["BS","블론",61],
+  ["G","경기",61],["GS","선발",61],["CG","완투",61],["SHO","완봉",61],["IP","투구이닝",90],
+  ["K","탈삼진",72],["BB","볼넷",72],["H","피안타",72],["2B","2루",57],["3B","3루",57],
+  ["HR","홈런",57],["SB","도루",57],["CS","도실",57],["BK","보크",57],["R","실점",57],
+  ["ER","자책점",72],["AVG","피안",65],["OBP","피출",65],["SLG","피장",65]];
  const pit=[["year","시즌",48],["team","소속팀",95],["ERA","방어율",71],["W","승",51],["L","패",51],["SV","세",51],["BS","블론",61],["G","경기",61],["GS","선발",61],["CG","완투",61],["SHO","완봉",61],["IP","투구이닝",90],["K","탈삼진",72],["BB","볼넷",72],["H","피안타",72],["2B","2루",57],["3B","3루",57],["HR","홈런",57],["SB","도루",57],["CS","도실",57],["BK","보크",57],["WP","폭투",57],["R","실점",57],["ER","자책점",72],["AVG","피안",65],["OBP","피출",65],["SLG","피장",65],["HLD","홀드",55],["QS","퀄스",55]];
  function tint(hex,f){if(!/^#[0-9a-f]{6}$/i.test(hex))return hex;const parts=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));return "#"+parts.map(n=>Math.max(0,Math.min(255,Math.round(n*f))).toString(16).padStart(2,"0")).join("")}
  function bg(ctx,W,H,palette,gradient,color2,angle){
@@ -81,12 +91,14 @@ window.RKBOCard=(()=>{
   }
  }
  function draw(args){
-  const {canvas,p,teamInfo={},image,logos={},rowSprite=null,wins={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",displayName=null,displayNumber=null}=args;
+  const {canvas,p,teamInfo={},image,logos={},rowSprite=null,wins={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",displayName=null,displayNumber=null,mode="regular"}=args;
   const ctx=canvas.getContext("2d");const pitcher=p?.kind==="pitcher";
-  const columns=pitcher?pit:bat;
+  const post=mode==="postseason";
+  const columns=post?(pitcher?postPit:postBat):(pitcher?pit:bat);
   const W=pitcher?1606:1492,H0=pitcher?231:220,headH=28,rowH=29;
-  const rows=Object.values(p?.seasons||{}).sort((a,b)=>a.year-b.year);
-  const height=H0+headH+(rows.length+2)*rowH;
+  const rows=Object.values((post?p?.postSeasons:p?.seasons)||{}).filter(r=>r&&r.year).sort((a,b)=>a.year-b.year);
+  const visibleRows=post?Math.max(1,rows.length):rows.length+2;
+  const height=H0+headH+visibleRows*rowH;
   canvas.width=W;canvas.height=height;
   const current=p?.team||"LG",theme=teamInfo[current]||["RKBO","#c50136","RKBO LEAGUE"],teamColor=theme[1]||"#c50136";
   ctx.fillStyle="#fff";ctx.fillRect(0,0,W,height);
@@ -106,11 +118,11 @@ window.RKBOCard=(()=>{
 
   const teamTitle=theme[2]||"RKBO";
   const playerLabel=p?((displayNumber||p.number||"—")+". "+(displayName||p.name)):"RKBO CAREER MAKER";
-  const subtitle="정규 시즌 통산 기록";
+  const subtitle=post?"포스트시즌 통산 기록":"정규 시즌 통산 기록";
   if(won)write(ctx,"★".repeat(won),midpoint,16,22,"center",true,"#ffd33d");
-  write(ctx,teamTitle,midpoint,52,fitFont(ctx,teamTitle,40,29,W*.36),"center",true,"#fff");
-  write(ctx,playerLabel,midpoint,116,fitFont(ctx,playerLabel,63,44,W*.43),"center",true,"#fff");
-  write(ctx,subtitle,midpoint,179,fitFont(ctx,subtitle,33,27,W*.34),"center",true,"#fff");
+  write(ctx,teamTitle,midpoint,49,fitFont(ctx,teamTitle,34,28,W*.36),"center",true,"#fff");
+  write(ctx,playerLabel,midpoint,113,fitFont(ctx,playerLabel,53,41,W*.43),"center",true,"#fff");
+  write(ctx,subtitle,midpoint,181,fitFont(ctx,subtitle,28,24,W*.34),"center",true,"#fff");
   if(fa&&p){
    const grade=String(faGrade||"C").toUpperCase();
    const faLabel=pitcher?("FA  "+grade+"등급  "+pitcherRole(p)):("FA  "+grade+"등급");
@@ -141,13 +153,14 @@ window.RKBOCard=(()=>{
   ctx.fillStyle="#fff";ctx.fillRect(0,H0,W,1);
   tableCols.forEach(([key,label],i)=>write(ctx,label,starts[i]+widths[i]/2,H0+headH/2+1,fitFont(ctx,label,19,15,widths[i]-2),"center",true,"#fff"));
   const koreanTeam={KIA:"KIA",HAN:"한화",SAM:"삼성",LOT:"롯데",LG:"LG",DOO:"두산",SSG:"SSG",NC:"NC",SK:"SK",KT:"KT",KIW:"키움"};
- const entryRows=[
-    ...rows.map(r=>({...r,title:(r.year-1950)+"차"})),
-    {title:"4시즌 통산",stats:RKBOXls.summary(p,"career"),total:true},
-    {title:"최근 3시즌 통산",stats:RKBOXls.summary(p,"last3"),total:true}
-  ];
-  // Use actual full career, not a hard-coded 4 seasons, for the total display label.
-  entryRows[rows.length].title=rows.length+"시즌 통산";
+ const entryRows=post
+   ?rows.map(r=>({...r,title:(r.year-1950)+"차"}))
+   :[
+     ...rows.map(r=>({...r,title:(r.year-1950)+"차"})),
+     {title:rows.length+"시즌 통산",stats:RKBOXls.summary(p,"career"),total:true},
+     {title:"최근 3시즌 통산",stats:RKBOXls.summary(p,"last3"),total:true}
+   ];
+  const seasonIndex=post?1:0,teamIndex=post?2:1;
   entryRows.forEach((r,i)=>{
    const y=H0+headH+i*rowH;
    const rc=r.total?"#000":(teamInfo[r.team]?.[1]||"#31465c");
@@ -156,9 +169,11 @@ window.RKBOCard=(()=>{
    if(r.total){
     write(ctx,r.title,starts[0]+(widths[0]+widths[1])/2,y+16,17,"center",true,"#fff",widths[0]+widths[1]-8);
    }else{
-    const rowlogo=logos[r.team],wTeam=widths[1];
-    const iconX=starts[1]+wTeam*.29,iconY=y+rowH/2,iconSize=25;
-    write(ctx,r.title,4,y+17,18,"left",true);
+    const rowlogo=logos[r.team],wTeam=widths[teamIndex];
+    const iconX=starts[teamIndex]+wTeam*.29,iconY=y+rowH/2,iconSize=25;
+    const isChampion=wins[r.year-1950]===r.team;
+    if(post&&isChampion)write(ctx,"🏆",starts[0]+widths[0]/2,y+17,21,"center",true,"#ffd34d",widths[0]-3);
+    write(ctx,r.title,starts[seasonIndex]+widths[seasonIndex]/2,y+17,18,"center",true,"#fff",widths[seasonIndex]-2);
     const index=ROW_SPRITE_TEAMS[r.team];
     if(rowSprite&&rowSprite.complete&&rowSprite.naturalWidth&&index!==undefined){
      const tile=48;
@@ -171,16 +186,22 @@ window.RKBOCard=(()=>{
      const ww=rowlogo.naturalWidth*ratio,hh=rowlogo.naturalHeight*ratio;
      ctx.drawImage(rowlogo,iconX-ww/2,iconY-hh/2,ww,hh);
     }
-    write(ctx,koreanTeam[r.team]||"—",starts[1]+wTeam*.75,y+17,17,"center",true,"#fff",wTeam*.45);
+    write(ctx,koreanTeam[r.team]||"—",starts[teamIndex]+wTeam*.75,y+17,17,"center",true,"#fff",wTeam*.45);
    }
-   for(let j=2;j<tableCols.length;j++){
+   for(let j=teamIndex+1;j<tableCols.length;j++){
     const value=rate(r.stats,tableCols[j][0]);
     write(ctx,value,starts[j]+widths[j]/2,y+17,fitFont(ctx,value,18,15,widths[j]-3),"center",true,"#fff");
    }
    // Summary first numeric falls at position 2, matching the original layout.
   });
+  if(post&&rows.length===0){
+   const y=H0+headH;
+   ctx.fillStyle="#17263b";ctx.fillRect(0,y,W,rowH);
+   write(ctx,"포스트시즌 기록 없음 · 포스트시즌 ZIP 또는 과거 통산 XLSX를 추가하세요",
+     W/2,y+rowH/2,17,"center",true,"#fff",W-30);
+  }
   ctx.fillStyle="#fff";ctx.fillRect(0,height-1,W,1);
-  return {width:W,height,won};
+  return {width:W,height,won,rows:rows.length,mode:post?"postseason":"regular"};
  }
- return {draw,tint,bat,pit,pitcherRole};
+ return {draw,tint,bat,pit,postBat,postPit,pitcherRole};
 })();
