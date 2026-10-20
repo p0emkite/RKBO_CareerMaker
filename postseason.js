@@ -131,9 +131,26 @@ window.RKBOPostseason=(()=>{
   }
   return {players:result,counts};
  }
+
+ function relink(players){
+  const result={...players};
+  let linked=0;
+  for(const [id,orphan] of Object.entries(result)){
+   if(!id.startsWith("ps:"))continue;
+   const regular=Object.fromEntries(Object.entries(result).filter(([key])=>!key.startsWith("ps:")));
+   const match=matchPlayer(regular,orphan);
+   if(!match.player)continue;
+   const p=match.player;
+   const postSeasons={...(orphan.postSeasons||{}),...(p.postSeasons||{})};
+   result[p.id]={...p,postSeasons,
+    postAliases:[...new Set([...(orphan.postAliases||[]),...(p.postAliases||[]),orphan.name])]};
+   delete result[id];linked++;
+  }
+  return {players:result,linked};
+ }
  function statsFor(player){
   return Object.values(player?.postSeasons||{}).filter(r=>r&&r.year)
    .sort((a,b)=>a.year-b.year);
  }
- return {parseMajorLeagueHtml,parseWorkbook,merge,matchPlayer,name,signature,identifiers,team,statsFor};
+ return {parseMajorLeagueHtml,parseWorkbook,merge,relink,matchPlayer,name,signature,identifiers,team,statsFor};
 })();
