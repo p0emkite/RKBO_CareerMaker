@@ -29,3 +29,4 @@ jobs:
           node tests/github-db.test.cjs
           node tests/ui-layout.test.cjs
           node tests/roster-champions.test.cjs
+          node tests/header-logo.test.cjs
