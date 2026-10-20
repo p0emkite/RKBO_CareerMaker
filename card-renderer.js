@@ -26,7 +26,7 @@ window.RKBOCard=(()=>{
   return String(v);
  }
  function draw(args){
-  const {canvas,p,teamInfo={},image,logos={},wins={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade=""}=args;
+  const {canvas,p,teamInfo={},image,logos={},wins={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",displayName=null,displayNumber=null}=args;
   const ctx=canvas.getContext("2d");const pitcher=p?.kind==="pitcher";
   const columns=pitcher?pit:bat;
   const W=pitcher?1606:1492,H0=pitcher?231:220,headH=28,rowH=29;
@@ -38,7 +38,11 @@ window.RKBOCard=(()=>{
   ctx.save();ctx.beginPath();ctx.rect(0,0,W,H0);ctx.clip();
   bg(ctx,W,H0,teamColor,gradient,color2,angle);
   if(image){
-   const ratio=Math.min((W*.38)/image.width,(H0*1.07)/image.height)*Number(photoZoom)/100;
+   // Source photo reference is 761 x 365 transparent PNG. Preserve aspect ratio for all uploads.
+   const refWidth=761,refHeight=365;
+   const frameScale=Math.min((W*.38)/refWidth,(H0*1.07)/refHeight);
+   const sourceFit=Math.min(refWidth/image.width,refHeight/image.height);
+   const ratio=frameScale*sourceFit*Number(photoZoom)/100;
    const imgW=image.width*ratio,imgH=image.height*ratio;
    ctx.drawImage(image,W*.18-imgW/2+Number(photoX),H0-imgH+Number(photoY),imgW,imgH);
   }
@@ -46,7 +50,7 @@ window.RKBOCard=(()=>{
   const won=rows.filter(r=>r.team&&wins[r.year-1950]===r.team).length;
   if(won)write(ctx,"★".repeat(won),midpoint,17,22,"center",true,"#ffdc36");
   write(ctx,theme[2]||"RKBO",midpoint,49,34);
-  write(ctx,p?("#"+(p.number||"—")+". "+p.name):"RKBO CAREER MAKER",midpoint,113,53,"center",true,"#fff",W*.54);
+  write(ctx,p?((displayNumber||p.number||"—")+". "+(displayName||p.name)):"RKBO CAREER MAKER",midpoint,113,53,"center",true,"#fff",W*.54);
   write(ctx,"정규 시즌 통산 기록",midpoint,181,28);
   if(fa&&p)write(ctx,"FA    "+(faGrade||"C")+"등급",midpoint,211,18,"center",true,"#ffe000");
   const logo=logos[current];
