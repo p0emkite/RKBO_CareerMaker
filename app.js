@@ -5,8 +5,7 @@ const TEAM={
  DOO:["두산 베어스","#003468","DOOSAN BEARS"],HAN:["한화 이글스","#ea580c","HANWHA EAGLES"],
  KIA:["KIA 타이거즈","#cc1129","KIA TIGERS"],LG:["LG 트윈스","#c30434","LG TWINS"],
  LOT:["롯데 자이언츠","#62aedb","LOTTE GIANTS"],NC:["NC 다이노스","#c59f79","NC DINOS"],
- SAM:["삼성 라이온즈","#006db8","SAMSUNG LIONS"],SSG:["SSG 랜더스","#c9203b","SSG LANDERS"],KT:["KT 위즈","#383838","KT WIZ"],KIW:["키움 히어로즈","#8a1232","KIWOOM HEROES"],SK:["SK 와이번스","#ed7731","SK WYVERNS"],
- KT:["KT 위즈","#35343d","KT WIZ"],KIW:["키움 히어로즈","#820024","KIWOOM HEROES"],
+ SAM:["삼성 라이온즈","#006db8","SAMSUNG LIONS"],SSG:["SSG 랜더스","#c9203b","SSG LANDERS"],KT:["KT 위즈","#35343d","KT WIZ"],KIW:["키움 히어로즈","#820024","KIWOOM HEROES"],
  SK:["SK 와이번스","#ea8042","SK WYVERNS"]};
 const LONG_TO_CODE=Object.fromEntries(Object.entries(TEAM).map(([k,v])=>[v[2].toUpperCase(),k]));
 const labelMap={ERA:"방어율",W:"승",L:"패",SV:"세",BS:"블론",G:"경기수",GS:"선발",CG:"완투",SHO:"완봉",IP:"이닝",K:"삼진",BB:"볼넷",H:"안타","2B":"2루타","3B":"3루타",HR:"홈런",R:"득점",RBI:"타점",AVG:"타율",OBP:"출루율",SLG:"장타율",AB:"타수",SB:"도루",CS:"도실",HBP:"사구",GIDP:"병살",IBB:"고의4구",SF:"희비",SH:"희타",TB:"루타",BK:"보크",WP:"폭투",HB:"사구",ER:"자책점",HLD:"홀드",QS:"QS","#Pitch":"투구수"};
