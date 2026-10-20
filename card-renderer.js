@@ -82,7 +82,7 @@ window.RKBOCard=(()=>{
    ctx.fillStyle=rc;ctx.fillRect(0,y,W,rowH);
    ctx.fillStyle="#fff";ctx.fillRect(0,y,W,2);
    if(r.total){
-    write(ctx,r.title,7,y+16,Math.min(15,Math.max(12,104/r.title.length)),"left",true,"#fff",widths[0]+widths[1]-12);
+    write(ctx,r.title,starts[0]+(widths[0]+widths[1])/2,y+16,16,"center",true,"#fff",widths[0]+widths[1]-8);
    }else{
     const rowlogo=logos[r.team]; const wYear=widths[0],wTeam=widths[1];
     write(ctx,r.title,4,y+17,17,"left",true);
