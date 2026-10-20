@@ -24,6 +24,7 @@ jobs:
           node --check github-db.js
           node --check cloud-merge.js
           node --check card-renderer.js
+          node --check fa-grade.js
           node --check postseason.js
           node --check rkbo-xls.js
           node tests/import.test.cjs
@@ -35,4 +36,5 @@ jobs:
           node tests/roster-champions.test.cjs
           node tests/header-logo.test.cjs
           node tests/career-design.test.cjs
+          node tests/fa-grade.test.cjs
           node tests/postseason.test.cjs
