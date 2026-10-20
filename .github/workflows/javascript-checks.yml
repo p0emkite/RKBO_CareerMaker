@@ -22,12 +22,14 @@ jobs:
           node --check roster.js
           node --check champions.js
           node --check github-db.js
+          node --check cloud-merge.js
           node --check card-renderer.js
           node --check postseason.js
           node --check rkbo-xls.js
           node tests/import.test.cjs
           node tests/player-filter.test.cjs
           node tests/github-db.test.cjs
+          node tests/cloud-merge.test.cjs
           node tests/ui-layout.test.cjs
           node tests/roster-champions.test.cjs
           node tests/header-logo.test.cjs
