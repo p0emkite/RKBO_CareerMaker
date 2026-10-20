@@ -220,23 +220,57 @@ async function loadCloud({automatic=false}={}){
  }finally{$("githubLoad").disabled=false}
 }
 async function publishCloud(){
- if(!RKBOGitHubDB.isConnected()){setCloudStatus("토큰 필요","GitHub 쓰기 토큰을 연결하세요.");return}
- if(!cloudLoadedForPublish){
-  setCloudStatus("불러오기 필요","GitHub에 기존 기록이 있습니다. 다른 기기의 기록을 덮어쓰지 않도록 먼저 GitHub DB를 불러오세요.");
-  return;
+ if(!RKBOGitHubDB.isConnected()){
+  setCloudStatus("토큰 필요","GitHub 쓰기 토큰을 연결하세요.");return;
  }
- const count=Object.keys(players).length;
- if(!count){setCloudStatus("저장 중단","빈 선수 DB로 GitHub 공용 기록을 덮어쓰지 않습니다.");return}
- if(currentSeason===null){setCloudStatus("시즌 설정 필요","최신 시즌 차수를 먼저 입력하고 '시즌 저장'을 누르세요.");return}
- if(!confirm("GitHub의 공개 저장소에 선수 "+count+"명과 최신 "+currentSeason+"차 시즌 설정을 저장합니다.\n기존 GitHub DB 파일은 새 버전으로 커밋됩니다. 진행할까요?"))return;
  $("githubSave").disabled=true;
- setCloudStatus("GitHub 저장 중","선수 "+count+"명의 DB를 커밋하고 있습니다.");
+ setCloudStatus("기존 DB 확인 중","GitHub 기록을 읽고 브라우저 신규 기록과 안전하게 병합합니다.");
  try{
-  const result=await RKBOGitHubDB.save({schema:2,currentSeason,champions:championMap,teamGradients,players});
+  // Always start from the latest remote SHA, so a recently uploaded postseason XLSX
+  // does not require replacing (and losing) browser-local season records first.
+  const existing=await RKBOGitHubDB.read();
+  const remote=existing?.data||{schema:2,players:{},champions:{},teamGradients:{},currentSeason:null};
+  const merged=RKBOCloudMerge.combine(remote.players,players);
+  const relinked=RKBOPostseason.relink(merged.players);
+  const all=relinked.players;
+  const count=Object.keys(all).length,postRows=Object.values(all).reduce(
+   (sum,p)=>sum+Object.keys(p.postSeasons||{}).length,0);
+  if(!count){setCloudStatus("저장 중단","저장할 선수가 없습니다. 기록을 먼저 추가하세요.");return}
+  const seasonToSave=currentSeason??remote.currentSeason;
+  if(seasonToSave===null){setCloudStatus("시즌 설정 필요","최신 시즌 차수를 먼저 저장해 주세요.");return}
+  const config=RKBOGitHubDB.normalizeTeamGradients({...remote.teamGradients,...teamGradients});
+  const prizes={...remote.champions,...championMap};
+  const problems=merged.conflicts;
+  const warning=problems.length
+   ?("\n주의: 같은 선수·같은 시즌의 기록 충돌 "+problems.length+
+     "건이 있습니다. 확인하면 이 브라우저의 기록을 우선 적용합니다.\n"+
+     problems.slice(0,4).map(x=>x.id+"("+x.type+" "+x.season+")").join(", "))
+   :"";
+  const prompt="GitHub 공용 DB에 합쳐서 저장합니다.\n"+
+   "선수 "+count+"명 · 정규 신규 시즌 "+merged.addedRegular+"건"+
+   " · 포시 신규 시즌 "+merged.addedPostseason+"건 (포시 전체 "+postRows+"건)"+
+   " · 구단별 배경 설정 "+Object.keys(config).length+"팀.\n"+
+   "기존 GitHub 선수 기록은 삭제하지 않습니다."+warning+
+   "\nGitHub에 커밋할까요?";
+  if(!confirm(prompt)){
+   setCloudStatus("저장 취소","브라우저의 기록과 설정은 그대로 유지했습니다.");return;
+  }
+  setCloudStatus("GitHub 저장 중","기존 선수·포스트시즌 기록과 합쳐서 커밋하고 있습니다.");
+  const result=await RKBOGitHubDB.save({
+   schema:2,currentSeason:seasonToSave,champions:prizes,teamGradients:config,players:all
+  });
+  players=all;
+  championMap=prizes;
+  if(currentSeason===null)applySeason(seasonToSave);
+  applyTeamGradients(config);
+  await store();populate();
   cloudLoadedForPublish=true;cloudHasPlayers=true;
-  setCloudStatus("저장 완료","GitHub에 "+count+"명 · 최신 "+currentSeason+"차 · 구단별 배경 "+Object.keys(teamGradients).length+"팀 저장 완료 ("+new Date(result.updatedAt).toLocaleString("ko-KR")+").");
-  report("GitHub 공용 DB 저장 완료. 다른 기기에서도 최신 기록을 불러올 수 있습니다.");
- }catch(e){setCloudStatus("저장 실패",e.message)}
+  setCloudStatus("저장 완료",
+   "GitHub에 선수 "+count+"명 · 포스트시즌 "+postRows+"개 선수·시즌 기록"+
+   " · 구단 배경 "+Object.keys(config).length+"팀 저장 완료 ("+
+   new Date(result.updatedAt).toLocaleString("ko-KR")+").");
+  report("GitHub 공용 DB 저장 성공: 정규·포시 기록 및 팀별 배경 설정이 함께 반영되었습니다.");
+ }catch(e){console.error("GitHub save failed",e);setCloudStatus("저장 실패",e.message)}
  finally{refreshGithubControls()}
 }
 
