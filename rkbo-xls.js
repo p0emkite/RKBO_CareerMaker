@@ -48,45 +48,75 @@ window.RKBOXls=(()=>{
   }
   return [...m.values()];
  }
+ function overlapAnchor(a,b,kind){
+  // Same nickname, same season, same games and workload: a reliable identity anchor
+  // even if a non-identity stat (e.g. WP) differs between sources.
+  if(numeric(a?.G,"G")===null||numeric(b?.G,"G")===null
+   ||numeric(a.G,"G")!==numeric(b.G,"G"))return false;
+  const load=kind==="pitcher"?"IP":"AB";
+  return numeric(a?.[load],load)!==null&&numeric(a[load],load)===numeric(b?.[load],load);
+ }
  function match(g,all){
-  const votes=new Map();
+  const sameName=[],differentName=[];
+  const groupName=keyName(g.name);
   for(const p of Object.values(all)){
    if(p.kind!==g.kind||p.id===g.id||!p.seasons)continue;
-   let good=0;
+   let exact=0,anchor=0;
    for(const [year,row] of Object.entries(g.seasons)){
-    const other=p.seasons[year];
-    if(other&&same(row.stats,other.stats,g.kind))good++;
+    const other=p.seasons[year];if(!other)continue;
+    if(same(row.stats,other.stats,g.kind))exact++;
+    if(overlapAnchor(row.stats,other.stats,g.kind))anchor++;
    }
-   if(good)votes.set(p.id,good);
+   if(groupName===keyName(p.name)&&groupName&&(exact||anchor)){
+    sameName.push({id:p.id,score:exact*100+anchor});
+   }else if(exact){
+    // For nickname changes, require 100% identical shared season statistics.
+    differentName.push({id:p.id,score:exact});
+   }
   }
-  if(!votes.size)return {id:null,why:"none"};
-  const best=Math.max(...votes.values()),w=[...votes].filter(([,v])=>v===best);
-  return w.length===1?{id:w[0][0],why:"exact",seasons:best}:{id:null,why:"ambiguous"};
+  const choices=sameName.length?sameName:differentName;
+  if(!choices.length)return {id:null,why:"none"};
+  choices.sort((a,b)=>b.score-a.score);
+  if(choices.length>1&&choices[0].score===choices[1].score)
+    return {id:null,why:"ambiguous",candidates:choices.filter(x=>x.score===choices[0].score).map(x=>x.id)};
+  return {id:choices[0].id,why:sameName.length?"same-name":"exact",seasons:choices[0].score};
  }
  function merge(a,b){
   if(!a)return {...b,aliases:[b.name]};
   const combined={...a.seasons};let conflicts=0;
   for(const [year,r] of Object.entries(b.seasons)){
-   if(combined[year]&&!same(combined[year].stats,r.stats,b.kind)){conflicts++;continue}
-   combined[year]={...combined[year],...r,team:r.team||combined[year]?.team||null,stats:{...combined[year]?.stats,...r.stats}};
+   const prior=combined[year];
+   if(prior&&!same(prior.stats,r.stats,b.kind)){
+    // Do not discard a verified team affiliation because of a discrepant stat.
+    // Keep HHRecord values when present; XLS remains the historical team source.
+    conflicts++;
+    combined[year]={...prior,team:r.team||prior.team||null,
+      stats:{...r.stats,...prior.stats}};
+    continue;
+   }
+   combined[year]={...prior,...r,team:r.team||prior?.team||null,
+      stats:{...prior?.stats,...r.stats}};
   }
-  const newer=Number(b.latestYear)>Number(a.latestYear)||(Number(b.latestYear)===Number(a.latestYear)&&b.id.startsWith("xls:")&&!a.id.startsWith("xls:"));
-  return {...a,seasons:combined,name:newer?b.name:a.name,team:newer?(b.team||a.team):(a.team||b.team),
+  const newer=Number(b.latestYear)>Number(a.latestYear)
+     ||(Number(b.latestYear)===Number(a.latestYear)
+        &&b.id.startsWith("xls:")&&!a.id.startsWith("xls:"));
+  return {...a,seasons:combined,name:newer?b.name:a.name,
+   team:newer?(b.team||a.team):(a.team||b.team),
    number:a.number||b.number||"",latestYear:Math.max(a.latestYear||0,b.latestYear||0),
    career:a.career||b.career,last3:a.last3||b.last3,
    hhLatestYear:Math.max(a.hhLatestYear||0,b.hhLatestYear||0),
-   aliases:[...new Set([a.name,b.name,...(a.aliases||[]),...(b.aliases||[])])],_conflicts:(a._conflicts||0)+conflicts};
+   aliases:[...new Set([a.name,b.name,...(a.aliases||[]),...(b.aliases||[])])],
+   _conflicts:(a._conflicts||0)+conflicts};
  }
  function reconcile(current,groups){
-  const result={...current};const info={linked:0,created:0,ambiguous:0,conflicts:0,aliases:[]};
+  const result={...current},info={linked:0,created:0,ambiguous:0,conflicts:0,aliases:[]};
   for(const g of groups){
-   // Do not allow synthetic XLS identities to replace a uniquely matched HHRecord identity.
-   const direct=result[g.id],candidates=Object.fromEntries(Object.entries(result).filter(([,v])=>v.id&&!v.id.startsWith("xls:")));
-   const m=match(g,candidates);
+   const direct=result[g.id];
+   const hh=Object.fromEntries(Object.entries(result).filter(([,v])=>v.id&&!v.id.startsWith("xls:")));
+   const m=match(g,hh);
    if(m.why==="ambiguous"){info.ambiguous++;continue}
    const target=m.id||g.id;
-   const old=result[target]||direct;
-   const before=old?old._conflicts||0:0;
+   const old=result[target]||direct,before=old?old._conflicts||0:0;
    const merged=merge(old,g);merged.id=target;result[target]=merged;
    info.conflicts+=merged._conflicts-before;
    if(m.id){info.linked++;if(old?.name!==g.name)info.aliases.push(old.name+" ↔ "+g.name)}
