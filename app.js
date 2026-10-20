@@ -55,7 +55,7 @@ const LONG_TO_CODE=Object.fromEntries(Object.entries(TEAM).map(([k,v])=>[v[2].to
 const labelMap={ERA:"방어율",W:"승",L:"패",SV:"세",BS:"블론",G:"경기수",GS:"선발",CG:"완투",SHO:"완봉",IP:"이닝",K:"삼진",BB:"볼넷",H:"안타","2B":"2루타","3B":"3루타",HR:"홈런",R:"득점",RBI:"타점",AVG:"타율",OBP:"출루율",SLG:"장타율",AB:"타수",SB:"도루",CS:"도실",HBP:"사구",GIDP:"병살",IBB:"고의4구",SF:"희비",SH:"희타",TB:"루타",BK:"보크",WP:"폭투",HB:"사구",ER:"자책점",HLD:"홀드",QS:"QS","#Pitch":"투구수"};
 const batCols=["G","AVG","OBP","SLG","OPS","AB","H","2B","3B","HR","R","RBI","BB","K","SB","CS"];
 const pitCols=["ERA","W","L","SV","BS","G","GS","CG","SHO","IP","K","BB","H","2B","3B","HR","SB","CS","BK","WP","R","ER","AVG","OBP","SLG","HLD","QS"];
-const DB_NAME="rkbo-career-maker";let players={},photo=null,logos={},selectedId="",rawZipYears=[];
+const DB_NAME="rkbo-career-maker";let players={},photo=null,logos={},rowSprite=null,selectedId="",rawZipYears=[];
 function report(message){$("importProgress").textContent=message;}
 
 
@@ -339,6 +339,14 @@ function drawImageContain(ctx,img,x,y,w,h,zoom,dx,dy){
  const ww=img.width*ratio*zoom,hh=img.height*ratio*zoom;
  ctx.drawImage(img,x+(w-ww)/2+dx,y+(h-hh)/2+dy,ww,hh);
 }
+function loadRowSprite(){
+ if(rowSprite)return;
+ const img=new Image();
+ rowSprite=img;
+ img.onload=()=>draw();
+ img.onerror=()=>{console.warn("User-supplied round team badges could not be loaded");rowSprite=false};
+ img.src="./assets/row-team-logos.png?v=20261021";
+}
 async function fetchLogo(team){
  if(!team||logos[team]!==undefined)return;
  logos[team]=null;
@@ -346,7 +354,7 @@ async function fetchLogo(team){
  img.crossOrigin="anonymous";img.src="https://raw.githubusercontent.com/p0emkite/RKBO-/main/logos/"+team+".webp";
 }
 function draw(){
- if(window.RKBOCard){const p=players[selectedId],identity=rosterInfo(p);const data=RKBOCard.draw({displayName:identity.displayName,displayNumber:identity.number,canvas:$("cardCanvas"),p,teamInfo:TEAM,image:photo,logos,wins:championMap,gradient:$("bgStyle").value==="gradient",color2:$("bgColor2").value,angle:$("bgAngle").value,photoZoom:$("zoom").value,photoX:$("offsetX").value,photoY:$("offsetY").value,fa:$("faCheck").checked,faGrade:$("faGrade").value||computeFA(p||{kind:"batter"})});$("downloadBtn").disabled=!p;$("playerInfo").textContent=p?("선수 ID "+p.id+" · "+toText(p.team)+" · "+Object.keys(p.seasons||{}).length+"시즌 · FA "+computeFA(p)+" · 우승 "+data.won+"회"):"선수를 선택하세요.";$("previewDescription").textContent=p?identity.displayName+" · "+Object.keys(p.seasons||{}).length+"시즌":"선수를 선택하세요.";$("kindBadge").textContent=p?.kind==="pitcher"?"PITCHER":p?"BATTER":"CAREER";if(p)Object.values(p.seasons||{}).forEach(r=>fetchLogo(r.team));return;}
+ if(window.RKBOCard){const p=players[selectedId],identity=rosterInfo(p);const data=RKBOCard.draw({displayName:identity.displayName,displayNumber:identity.number,canvas:$("cardCanvas"),p,teamInfo:TEAM,image:photo,logos,rowSprite,wins:championMap,gradient:$("bgStyle").value==="gradient",color2:$("bgColor2").value,angle:$("bgAngle").value,photoZoom:$("zoom").value,photoX:$("offsetX").value,photoY:$("offsetY").value,fa:$("faCheck").checked,faGrade:$("faGrade").value||computeFA(p||{kind:"batter"})});$("downloadBtn").disabled=!p;$("playerInfo").textContent=p?("선수 ID "+p.id+" · "+toText(p.team)+" · "+Object.keys(p.seasons||{}).length+"시즌 · FA "+computeFA(p)+" · 우승 "+data.won+"회"):"선수를 선택하세요.";$("previewDescription").textContent=p?identity.displayName+" · "+Object.keys(p.seasons||{}).length+"시즌":"선수를 선택하세요.";$("kindBadge").textContent=p?.kind==="pitcher"?"PITCHER":p?"BATTER":"CAREER";if(p)Object.values(p.seasons||{}).forEach(r=>fetchLogo(r.team));return;}
  const canvas=$("cardCanvas"),ctx=canvas.getContext("2d");
  const p=players[selectedId],list=p?Object.values(p.seasons||{}).sort((a,b)=>a.year-b.year):[];
  const cols=p?(p.kind==="pitcher"?pitCols:batCols):batCols;
@@ -489,6 +497,7 @@ async function init(){
  $("importDb").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const payload=JSON.parse(await f.text());if(payload.schema!==1||!payload.players||typeof payload.players!=="object")throw Error("지원되지 않는 백업입니다.");for(const p of Object.values(payload.players)){if(p&&p.id&&p.seasons&&p.kind)players[p.id]=mergeRecord(players[p.id],p)}await store();populate();report("백업 복원 완료: "+Object.keys(players).length+"명")}catch(err){report("복원 실패: "+err.message)}e.target.value=""};
  $("resetDb").onclick=async()=>{if(!confirm("이 브라우저의 RKBO 선수 DB를 모두 지울까요?"))return;players={};await store();selectedId="";populate();report("DB 초기화 완료")};
  draw();
+ loadRowSprite();
  refreshGithubControls();
  void RKBOReference.load().then(summary=>{
   populate();showUnmatchedRoster();
