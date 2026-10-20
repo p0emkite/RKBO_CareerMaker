@@ -346,7 +346,7 @@ async function fetchLogo(team){
  img.crossOrigin="anonymous";img.src="https://raw.githubusercontent.com/p0emkite/RKBO-/main/logos/"+team+".webp";
 }
 function draw(){
- if(window.RKBOCard){const p=players[selectedId];const data=RKBOCard.draw({canvas:$("cardCanvas"),p,teamInfo:TEAM,image:photo,logos,wins:championMap,gradient:$("bgStyle").value==="gradient",color2:$("bgColor2").value,angle:$("bgAngle").value,photoZoom:$("zoom").value,photoX:$("offsetX").value,photoY:$("offsetY").value,fa:$("faCheck").checked,faGrade:$("faGrade").value||computeFA(p||{kind:"batter"})});$("downloadBtn").disabled=!p;$("playerInfo").textContent=p?("선수 ID "+p.id+" · "+toText(p.team)+" · "+Object.keys(p.seasons||{}).length+"시즌 · FA "+computeFA(p)+" · 우승 "+data.won+"회"):"선수를 선택하세요.";$("previewDescription").textContent=p?p.name+" · "+Object.keys(p.seasons||{}).length+"시즌":"선수를 선택하세요.";$("kindBadge").textContent=p?.kind==="pitcher"?"PITCHER":p?"BATTER":"CAREER";if(p)Object.values(p.seasons||{}).forEach(r=>fetchLogo(r.team));return;}
+ if(window.RKBOCard){const p=players[selectedId],identity=rosterInfo(p);const data=RKBOCard.draw({displayName:identity.displayName,displayNumber:identity.number,canvas:$("cardCanvas"),p,teamInfo:TEAM,image:photo,logos,wins:championMap,gradient:$("bgStyle").value==="gradient",color2:$("bgColor2").value,angle:$("bgAngle").value,photoZoom:$("zoom").value,photoX:$("offsetX").value,photoY:$("offsetY").value,fa:$("faCheck").checked,faGrade:$("faGrade").value||computeFA(p||{kind:"batter"})});$("downloadBtn").disabled=!p;$("playerInfo").textContent=p?("선수 ID "+p.id+" · "+toText(p.team)+" · "+Object.keys(p.seasons||{}).length+"시즌 · FA "+computeFA(p)+" · 우승 "+data.won+"회"):"선수를 선택하세요.";$("previewDescription").textContent=p?identity.displayName+" · "+Object.keys(p.seasons||{}).length+"시즌":"선수를 선택하세요.";$("kindBadge").textContent=p?.kind==="pitcher"?"PITCHER":p?"BATTER":"CAREER";if(p)Object.values(p.seasons||{}).forEach(r=>fetchLogo(r.team));return;}
  const canvas=$("cardCanvas"),ctx=canvas.getContext("2d");
  const p=players[selectedId],list=p?Object.values(p.seasons||{}).sort((a,b)=>a.year-b.year):[];
  const cols=p?(p.kind==="pitcher"?pitCols:batCols):batCols;
@@ -362,7 +362,7 @@ function draw(){
  if(p){
   fetchLogo(p.team);
   if(logos[p.team] instanceof Image)ctx.drawImage(logos[p.team],W-200,68,128,128);
-  text(ctx,(p.number?"#"+p.number+"  ":"")+p.name,68,247,{bold:true,size:61,max:790,color:"#fff"});
+  text(ctx,(rosterInfo(p).number?"#"+rosterInfo(p).number+"  ":"")+rosterInfo(p).displayName,68,247,{bold:true,size:61,max:790,color:"#fff"});
   text(ctx,(p.kind==="pitcher"?"PITCHER":"BATTER")+"   •   "+list.length+" SEASONS",70,312,{bold:true,size:23,color:"#a9c4df"});
   const faOn=$("faCheck").checked,grade=$("faGrade").value||computeFA(p);
   if(faOn){roundedRect(ctx,70,351,176,50,8,"#263c58");text(ctx,"FA  "+grade+"등급",87,377,{bold:true,size:25,color:grade==="A"?"#ffdf4e":"#fff"})}
