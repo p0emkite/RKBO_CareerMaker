@@ -12,7 +12,7 @@ window.RKBOCard=(()=>{
   ctx.fillRect(0,0,W,H);
  }
  function write(ctx,val,x,y,size=19,align="center",bold=true,color="#fff",max=1000){
-  ctx.font=(bold?"700 ":"500 ")+size+"px Arial, 'Malgun Gothic', sans-serif";
+  ctx.font=(bold?"700 ":"500 ")+size+"px 'Noto Sans KR', sans-serif";
   ctx.textBaseline="middle";ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(String(val),x,y,max);
  }
  function rate(stat,k){
