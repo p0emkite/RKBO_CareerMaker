@@ -39,9 +39,9 @@ assert.equal(fa.calculate(make("pitcher",{G:"80",GS:"0",IP:"200",AVG:"-.---",OBP
 // One or more complete XLS seasons without HH LAST 3: reconstruct, do not
 // default to C due to absence of p.career.
 const xlsHitter={id:"xls:batter:sample",kind:"batter",latestYear:2010,
- seasons:{2008:{year:2008,stats:{G:"100",AB:"400",H:"140","2B":"30","3B":"2",HR:"10",BB:"35",AVG:".350",OBP:".410",SLG:".510"}},
- 2009:{year:2009,stats:{G:"100",AB:"400",H:"135","2B":"30","3B":"1",HR:"8",BB:"35",AVG:".338",OBP:".410",SLG:".480"}},
- 2010:{year:2010,stats:{G:"100",AB:"400",H:"130","2B":"30","3B":"2",HR:"9",BB:"40",AVG:".325",OBP:".400",SLG:".477"}}}};
+ seasons:{2008:{year:2008,stats:{G:"100",AB:"400",H:"140","2B":"30","3B":"2",HR:"10",BB:"35",AVG:".350",OBP:".440",SLG:".510"}},
+ 2009:{year:2009,stats:{G:"100",AB:"400",H:"135","2B":"30","3B":"1",HR:"8",BB:"35",AVG:".338",OBP:".430",SLG:".480"}},
+ 2010:{year:2010,stats:{G:"100",AB:"400",H:"130","2B":"30","3B":"2",HR:"9",BB:"40",AVG:".325",OBP:".440",SLG:".477"}}}};
 const xlsHitterResult=fa.calculate(xlsHitter);
 assert.equal(xlsHitterResult.grade,"A");
 assert.equal(xlsHitterResult.approximate,true,"Missing HBP/SF requires approximate OBP");
