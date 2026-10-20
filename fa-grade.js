@@ -23,9 +23,10 @@ window.RKBOFA=(()=>{
    const hits=total("H");
    stats.AVG=hits!==null&&stats.AB>0?hits/stats.AB:null;
    const tb=total("TB"),doubles=total("2B"),triples=total("3B"),hrs=total("HR");
-   stats.SLG=stats.AB>0?(tb!==null?tb:(
-    hits!==null&&doubles!==null&&triples!==null&&hrs!==null?
-    hits+doubles+2*triples+3*hrs:null))/stats.AB:null;
+   const bases=tb!==null?tb:
+    (hits!==null&&doubles!==null&&triples!==null&&hrs!==null?
+     hits+doubles+2*triples+3*hrs:null);
+   stats.SLG=stats.AB>0&&bases!==null?bases/stats.AB:null;
    const bb=total("BB"),hbp=total("HBP"),sf=total("SF");
    if(stats.AB>0&&hits!==null&&bb!==null&&hbp!==null&&sf!==null){
     const denominator=stats.AB+bb+hbp+sf;
