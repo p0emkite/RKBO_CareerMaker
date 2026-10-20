@@ -212,10 +212,10 @@ function populate(){
  updatePlayerList();
 }
 function updatePlayerList(){
- const team=$("teamSelect").value,q=$("playerSearch").value.trim();
+ const team=$("teamSelect").value;
  const year=currentSeason===null?0:currentSeason+1950;
  const includeRetired=$("includeRetired").checked;
- const list=year===0&&!includeRetired?[]:RKBOPlayerFilter.list(players,{team,query:q,includeRetired,year});
+ const list=year===0&&!includeRetired?[]:RKBOPlayerFilter.list(players,{team,includeRetired,year});
  $("latestSeasonHint").textContent=currentSeason===null
   ?(includeRetired?"최신 시즌 미설정 · 전체 선수 표시 중":"최신 시즌 차수를 저장하면 해당 시즌 현역 선수만 표시됩니다.")
   :("기준 "+currentSeason+"차 · "+(includeRetired?"은퇴 선수 포함":"해당 시즌 출전 선수만 표시"));
@@ -311,7 +311,7 @@ function draw(){
 }
 async function init(){
  try{await restore();try{championMap=JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}catch(e){championMap={}}; $("champions").value=Object.entries(championMap).sort((a,b)=>Number(a[0])-Number(b[0])).map(([a,b])=>a+","+b).join("\n");let savedSeason=null;try{savedSeason=localStorage.getItem(CURRENT_SEASON_KEY)}catch(e){}applySeason(savedSeason,{persist:false});populate();report("브라우저 DB 준비 완료 · 기준 시즌을 직접 저장할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
- for(const id of ["teamSelect","playerSearch","includeRetired"])$(id).addEventListener(id==="playerSearch"?"input":"change",updatePlayerList);
+ for(const id of ["teamSelect","includeRetired"])$(id).addEventListener("change",updatePlayerList);
 
  $("saveCurrentSeason").addEventListener("click",()=>{
   const val=parseSeasonNumber($("currentSeasonInput").value);
