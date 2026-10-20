@@ -13,6 +13,104 @@ const batCols=["G","AVG","OBP","SLG","OPS","AB","H","2B","3B","HR","R","RBI","BB
 const pitCols=["ERA","W","L","SV","BS","G","GS","CG","SHO","IP","K","BB","H","2B","3B","HR","SB","CS","BK","WP","R","ER","AVG","OBP","SLG","HLD","QS"];
 const DB_NAME="rkbo-career-maker";let players={},photo=null,logos={},selectedId="",rawZipYears=[];
 function report(message){$("importProgress").textContent=message;}
+
+const CURRENT_SEASON_KEY="rkbo-current-season";
+let currentSeason=null,cloudLoadedForPublish=false,cloudHasPlayers=false;
+function parseSeasonNumber(value){
+ if(value===""||value===null||value===undefined)return null;
+ const n=Number(value);
+ return Number.isInteger(n)&&n>=1&&n<=999?n:null;
+}
+function applySeason(value,{persist=true}={}){
+ currentSeason=parseSeasonNumber(value);
+ $("currentSeasonInput").value=currentSeason===null?"":String(currentSeason);
+ if(persist){
+  try{
+   if(currentSeason===null)localStorage.removeItem(CURRENT_SEASON_KEY);
+   else localStorage.setItem(CURRENT_SEASON_KEY,String(currentSeason));
+  }catch(e){report("시즌 설정 저장 실패: 브라우저 저장소를 확인하세요.")}
+ }
+ $("currentSeasonStatus").textContent=currentSeason===null?
+  "최신 시즌 미설정 · 차수를 직접 입력한 뒤 저장하세요.":
+  "저장된 최신 시즌: "+currentSeason+"차 · 현역 선수 판정에 적용됩니다.";
+}
+function setCloudStatus(state,detail){
+ $("githubStatus").textContent=state;
+ $("githubDetail").textContent=detail;
+}
+function refreshGithubControls(){
+ const connected=RKBOGitHubDB.isConnected();
+ $("githubConnect").disabled=connected;
+ $("githubDisconnect").disabled=!connected;
+ $("githubSave").disabled=!connected;
+}
+async function loadCloud({automatic=false}={}){
+ $("githubLoad").disabled=true;
+ try{
+  const snapshot=await RKBOGitHubDB.read();
+  if(!snapshot){
+   cloudLoadedForPublish=true;cloudHasPlayers=false;
+   setCloudStatus("저장소 빈 상태","GitHub DB가 아직 없습니다. 현재 기록을 GitHub에 저장해 처음 생성할 수 있습니다.");
+   return;
+  }
+  const remote=snapshot.data,remoteCount=Object.keys(remote.players).length;
+  cloudHasPlayers=remoteCount>0;
+  const localCount=Object.keys(players).length;
+  if(automatic&&localCount>0){
+   cloudLoadedForPublish=!remoteCount;
+   if(currentSeason===null&&remote.currentSeason!==null)applySeason(remote.currentSeason);
+   if(!Object.keys(championMap).length&&Object.keys(remote.champions).length){
+    championMap=remote.champions;
+    $("champions").value=Object.entries(championMap).sort((a,b)=>Number(a[0])-Number(b[0])).map(([a,b])=>a+","+b).join("\n");
+    try{localStorage.setItem("rkbo-champions",JSON.stringify(championMap))}catch(e){}
+   }
+   updatePlayerList();
+   setCloudStatus("GitHub 연결됨",remoteCount?
+    "브라우저에 "+localCount+"명, GitHub에 "+remoteCount+"명의 기록이 있습니다. 기존 기록을 보호하기 위해 자동 덮어쓰지 않았습니다. GitHub DB 불러오기는 현재 브라우저 기록을 대체합니다.":
+    "GitHub DB는 아직 비어 있습니다. 브라우저 기록 "+localCount+"명을 최초로 GitHub에 저장할 수 있습니다.");
+   return;
+  }
+  if(!automatic&&localCount>0&&
+    !confirm("현재 브라우저에 저장된 선수 "+localCount+"명의 DB를 GitHub의 "+remoteCount+"명 기록으로 교체합니다.\n기존 기록을 보관하려면 먼저 'DB JSON 백업'을 눌러 주세요.\n계속할까요?")){
+   setCloudStatus("불러오기 취소","브라우저에 보관된 기존 기록을 그대로 유지했습니다.");
+   return;
+  }
+  players=remote.players;
+  championMap=remote.champions;
+  $("champions").value=Object.entries(championMap).sort((a,b)=>Number(a[0])-Number(b[0])).map(([a,b])=>a+","+b).join("\n");
+  try{localStorage.setItem("rkbo-champions",JSON.stringify(championMap))}catch(e){}
+  if(remote.currentSeason!==null||!automatic)applySeason(remote.currentSeason);
+  await store();
+  selectedId="";
+  populate();
+  cloudLoadedForPublish=true;
+  setCloudStatus("GitHub DB 적용","GitHub에서 "+remoteCount+"명 기록을 불러왔습니다. 최신 시즌: "+(currentSeason===null?"미설정":currentSeason+"차")+".");
+  report("GitHub DB 불러오기 완료: "+remoteCount+"명");
+ }catch(e){
+  setCloudStatus("GitHub 오류",e.message);
+ }finally{$("githubLoad").disabled=false}
+}
+async function publishCloud(){
+ if(!RKBOGitHubDB.isConnected()){setCloudStatus("토큰 필요","GitHub 쓰기 토큰을 연결하세요.");return}
+ if(!cloudLoadedForPublish){
+  setCloudStatus("불러오기 필요","GitHub에 기존 기록이 있습니다. 다른 기기의 기록을 덮어쓰지 않도록 먼저 GitHub DB를 불러오세요.");
+  return;
+ }
+ const count=Object.keys(players).length;
+ if(!count){setCloudStatus("저장 중단","빈 선수 DB로 GitHub 공용 기록을 덮어쓰지 않습니다.");return}
+ if(currentSeason===null){setCloudStatus("시즌 설정 필요","최신 시즌 차수를 먼저 입력하고 '시즌 저장'을 누르세요.");return}
+ if(!confirm("GitHub의 공개 저장소에 선수 "+count+"명과 최신 "+currentSeason+"차 시즌 설정을 저장합니다.\n기존 GitHub DB 파일은 새 버전으로 커밋됩니다. 진행할까요?"))return;
+ $("githubSave").disabled=true;
+ setCloudStatus("GitHub 저장 중","선수 "+count+"명의 DB를 커밋하고 있습니다.");
+ try{
+  const result=await RKBOGitHubDB.save({schema:2,currentSeason,champions:championMap,players});
+  cloudLoadedForPublish=true;cloudHasPlayers=true;
+  setCloudStatus("저장 완료","GitHub에 "+count+"명 · 최신 "+currentSeason+"차 저장 완료 ("+new Date(result.updatedAt).toLocaleString("ko-KR")+").");
+  report("GitHub 공용 DB 저장 완료. 다른 기기에서도 최신 기록을 불러올 수 있습니다.");
+ }catch(e){setCloudStatus("저장 실패",e.message)}
+ finally{refreshGithubControls()}
+}
+
 function strip(v){return String(v||"").replace(/<[^>]*>/g,"").replace(/&nbsp;/ig," ").replace(/&amp;/ig,"&").trim();}
 function parseTable(source) {
  const loc=source.indexOf("Stats By Season");
@@ -115,11 +213,12 @@ function populate(){
 }
 function updatePlayerList(){
  const team=$("teamSelect").value,q=$("playerSearch").value.trim();
- const year=RKBOPlayerFilter.latestSeason(players),includeRetired=$("includeRetired").checked;
- const list=RKBOPlayerFilter.list(players,{team,query:q,includeRetired,year});
- $("latestSeasonHint").textContent=year
-  ?("최신 "+(year-1950)+"차 시즌 · "+(includeRetired?"은퇴 선수 포함":"해당 시즌 출전 선수만 표시"))
-  :"기록을 업로드하면 최신 시즌을 자동 판별합니다.";
+ const year=currentSeason===null?0:currentSeason+1950;
+ const includeRetired=$("includeRetired").checked;
+ const list=year===0&&!includeRetired?[]:RKBOPlayerFilter.list(players,{team,query:q,includeRetired,year});
+ $("latestSeasonHint").textContent=currentSeason===null
+  ?(includeRetired?"최신 시즌 미설정 · 전체 선수 표시 중":"최신 시즌 차수를 저장하면 해당 시즌 현역 선수만 표시됩니다.")
+  :("기준 "+currentSeason+"차 · "+(includeRetired?"은퇴 선수 포함":"해당 시즌 출전 선수만 표시"));
  $("playerSelect").replaceChildren(new Option(list.length?list.length+"명 중 선수 선택":"검색 결과 없음",""),...list.map(p=>new Option(p.name+" · "+toText(p.team)+" · "+(p.kind==="pitcher"?"투수":"타자"),p.id)));
  if(list.some(p=>p.id===selectedId))$("playerSelect").value=selectedId;else{selectedId="";$("playerSelect").value=""}
  draw();
@@ -211,8 +310,40 @@ function draw(){
  $("kindBadge").textContent=p?.kind==="pitcher"?"PITCHER":p?"BATTER":"CAREER";
 }
 async function init(){
- try{await restore();try{championMap=JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}catch(e){championMap={}}; $("champions").value=Object.entries(championMap).sort((a,b)=>Number(a[0])-Number(b[0])).map(([a,b])=>a+","+b).join("\n");populate();report("브라우저 DB 준비 완료 · HHRecord ZIP을 업로드할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
+ try{await restore();try{championMap=JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}catch(e){championMap={}}; $("champions").value=Object.entries(championMap).sort((a,b)=>Number(a[0])-Number(b[0])).map(([a,b])=>a+","+b).join("\n");let savedSeason=null;try{savedSeason=localStorage.getItem(CURRENT_SEASON_KEY)}catch(e){}applySeason(savedSeason,{persist:false});populate();report("브라우저 DB 준비 완료 · 기준 시즌을 직접 저장할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
  for(const id of ["teamSelect","playerSearch","includeRetired"])$(id).addEventListener(id==="playerSearch"?"input":"change",updatePlayerList);
+
+ $("saveCurrentSeason").addEventListener("click",()=>{
+  const val=parseSeasonNumber($("currentSeasonInput").value);
+  if(val===null){
+   $("currentSeasonStatus").textContent="1~999 사이의 시즌 차수를 정수로 입력해 주세요.";
+   return;
+  }
+  applySeason(val);
+  updatePlayerList();
+  report("최신 시즌을 "+val+"차로 저장했습니다. GitHub 공용 설정에도 반영하려면 '현재 DB를 GitHub에 저장'을 누르세요.");
+ });
+ $("currentSeasonInput").addEventListener("keydown",e=>{
+  if(e.key==="Enter"){$("saveCurrentSeason").click();e.preventDefault()}
+ });
+ $("githubConnect").addEventListener("click",async()=>{
+  const value=$("githubToken").value;
+  $("githubToken").value="";
+  $("githubConnect").disabled=true;
+  setCloudStatus("인증 확인 중","GitHub 토큰 권한을 확인 중입니다.");
+  try{
+   await RKBOGitHubDB.connect(value);
+   setCloudStatus("토큰 연결됨","토큰은 현재 열린 페이지의 메모리에만 보관됩니다. 저장 버튼을 누르면 공개 GitHub DB에 커밋합니다.");
+  }catch(e){setCloudStatus("인증 실패",e.message)}
+  finally{refreshGithubControls()}
+ });
+ $("githubDisconnect").addEventListener("click",()=>{
+  RKBOGitHubDB.disconnect();refreshGithubControls();
+  setCloudStatus("토큰 연결 해제","읽기는 계속 가능하지만 GitHub에 기록하려면 토큰을 다시 연결해야 합니다.");
+ });
+ $("githubLoad").addEventListener("click",()=>loadCloud());
+ $("githubSave").addEventListener("click",publishCloud);
+
  $("playerSelect").addEventListener("change",()=>{selectedId=$("playerSelect").value;photo=null;$("photoInput").value="";$("faCheck").checked=false;$("faGrade").disabled=true;draw()});
  $("xlsInput").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;try{report("RKBO XLS 읽는 중...");const parsed=RKBOXls.parse(await file.arrayBuffer());const result=RKBOXls.reconcile(players,RKBOXls.group(parsed));players=result.players;await store();populate();report("XLS "+parsed.length+"개 기록 · 연결 "+result.info.linked+"명 · 신규 "+result.info.created+"명 · 중복·충돌 "+result.info.conflicts+"건 · 판정 보류 "+result.info.ambiguous+"명");}catch(e){console.error(e);report("XLS 불러오기 실패: "+e.message)}e.target.value=""});
  for(const id of ["bgStyle","bgColor2","bgAngle"])$(id).addEventListener("change",draw);
@@ -228,5 +359,7 @@ async function init(){
  $("importDb").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const payload=JSON.parse(await f.text());if(payload.schema!==1||!payload.players||typeof payload.players!=="object")throw Error("지원되지 않는 백업입니다.");for(const p of Object.values(payload.players)){if(p&&p.id&&p.seasons&&p.kind)players[p.id]=mergeRecord(players[p.id],p)}await store();populate();report("백업 복원 완료: "+Object.keys(players).length+"명")}catch(err){report("복원 실패: "+err.message)}e.target.value=""};
  $("resetDb").onclick=async()=>{if(!confirm("이 브라우저의 RKBO 선수 DB를 모두 지울까요?"))return;players={};await store();selectedId="";populate();report("DB 초기화 완료")};
  draw();
+ refreshGithubControls();
+ void loadCloud({automatic:true});
 }
 document.addEventListener("DOMContentLoaded",()=>{init();if(document.fonts)document.fonts.ready.then(draw).catch(()=>{});});
