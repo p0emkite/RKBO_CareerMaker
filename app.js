@@ -58,6 +58,49 @@ const pitCols=["ERA","W","L","SV","BS","G","GS","CG","SHO","IP","K","BB","H","2B
 const DB_NAME="rkbo-career-maker";let players={},photo=null,logos={},selectedId="",rawZipYears=[];
 function report(message){$("importProgress").textContent=message;}
 
+
+function rosterInfo(p){
+ return window.RKBOReference ? RKBOReference.get(p) :
+  {displayName:p?.name||"",englishName:p?.name||"",number:p?.number||"",koreanName:null,matched:false,jerseyFromCSV:false};
+}
+function showIdentityEditor(){
+ const p=players[selectedId],container=$("identityEditor");
+ container.hidden=!p;
+ if(!p)return;
+ const info=rosterInfo(p);
+ $("koreanNameInput").value=info.koreanName||"";
+ $("jerseyNumberInput").value=info.number||"";
+ $("identityStatus").textContent=info.nameFromDB
+  ?("영문 원본: "+p.name+" · 한글 닉네임 자동 매칭"+(info.jerseyFromCSV?" · 60차 등번호 자동 배정":" · 등번호는 현재 기록 기준"))
+  :("매칭표에 없는 선수입니다. 영문 이름: "+p.name+" · 한글 닉네임을 직접 입력하고 저장하세요.");
+}
+function showUnmatchedRoster(){
+ if(!window.RKBOReference||!RKBOReference.isLoaded())return;
+ const summary=RKBOReference.stats();
+ $("unmatchedRosterSummary").textContent="60차 등번호표 미매칭 "+summary.unmatched.length+"명 · 이름 공란 "+summary.unnamed+"행";
+ const box=$("unmatchedRosterDetails");
+ box.replaceChildren();
+ const info=document.createElement("p");
+ info.textContent="영문↔한글 매칭표에 없는 이름입니다. CSV 원본에는 그대로 남겨 두었으며 임의로 다른 선수에게 연결하지 않습니다.";
+ box.append(info);
+ for(const r of summary.unmatched){
+  const el=document.createElement("span");
+  el.textContent=(r["등번호"]||"?")+"번 "+r["이름"];
+  box.append(el);
+ }
+}
+function showChampionStatus(message){
+ $("championCount").textContent=Object.keys(championMap).length+"시즌";
+ $("championSaveStatus").textContent=message;
+}
+function setChampionMap(source,message,{persist=true}={}){
+ championMap={...source};
+ $("champions").value=RKBOChampions.format(championMap);
+ if(persist){try{localStorage.setItem("rkbo-champions",JSON.stringify(championMap))}catch(e){console.warn("Cannot save champion map",e)}}
+ showChampionStatus(message);
+ draw();
+}
+
 const CURRENT_SEASON_KEY="rkbo-current-season";
 let currentSeason=null,cloudLoadedForPublish=false,cloudHasPlayers=false;
 function parseSeasonNumber(value){
@@ -103,10 +146,9 @@ async function loadCloud({automatic=false}={}){
   if(automatic&&localCount>0){
    cloudLoadedForPublish=!remoteCount;
    if(currentSeason===null&&remote.currentSeason!==null)applySeason(remote.currentSeason);
-   if(!Object.keys(championMap).length&&Object.keys(remote.champions).length){
-    championMap=remote.champions;
-    $("champions").value=Object.entries(championMap).sort((a,b)=>Number(a[0])-Number(b[0])).map(([a,b])=>a+","+b).join("\n");
-    try{localStorage.setItem("rkbo-champions",JSON.stringify(championMap))}catch(e){}
+   if(Object.keys(remote.champions).length){
+    setChampionMap({...RKBOChampions.DEFAULT,...championMap,...remote.champions},
+      "기본 우승 기록과 GitHub 우승 기록을 적용했습니다.");
    }
    updatePlayerList();
    setCloudStatus("GitHub 연결됨",remoteCount?
@@ -120,9 +162,8 @@ async function loadCloud({automatic=false}={}){
    return;
   }
   players=remote.players;
-  championMap=remote.champions;
-  $("champions").value=Object.entries(championMap).sort((a,b)=>Number(a[0])-Number(b[0])).map(([a,b])=>a+","+b).join("\n");
-  try{localStorage.setItem("rkbo-champions",JSON.stringify(championMap))}catch(e){}
+  setChampionMap({...RKBOChampions.DEFAULT,...remote.champions},
+    "GitHub 저장 기록을 불러왔습니다. 기본 우승 기록도 함께 적용했습니다.");
   if(remote.currentSeason!==null||!automatic)applySeason(remote.currentSeason);
   await store();
   selectedId="";
@@ -263,8 +304,9 @@ function updatePlayerList(){
  $("latestSeasonHint").textContent=currentSeason===null
   ?(includeRetired?"최신 시즌 미설정 · 전체 선수 표시 중":"최신 시즌 차수를 저장하면 해당 시즌 현역 선수만 표시됩니다.")
   :("기준 "+currentSeason+"차 · "+(includeRetired?"은퇴 선수 포함":"해당 시즌 출전 선수만 표시"));
- $("playerSelect").replaceChildren(new Option(list.length?list.length+"명 중 선수 선택":"검색 결과 없음",""),...list.map(p=>new Option(p.name+" · "+toText(p.team)+" · "+(p.kind==="pitcher"?"투수":"타자"),p.id)));
+ $("playerSelect").replaceChildren(new Option(list.length?list.length+"명 중 선수 선택":"검색 결과 없음",""),...list.map(p=>new Option(rosterInfo(p).displayName+" · "+toText(p.team)+" · "+(p.kind==="pitcher"?"투수":"타자"),p.id)));
  if(list.some(p=>p.id===selectedId))$("playerSelect").value=selectedId;else{selectedId="";$("playerSelect").value=""}
+ showIdentityEditor();
  draw();
 }
 function roundedRect(ctx,x,y,w,h,r,fill){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill()}
@@ -354,7 +396,7 @@ function draw(){
  $("kindBadge").textContent=p?.kind==="pitcher"?"PITCHER":p?"BATTER":"CAREER";
 }
 async function init(){
- try{await restore();try{championMap=JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}catch(e){championMap={}}; $("champions").value=Object.entries(championMap).sort((a,b)=>Number(a[0])-Number(b[0])).map(([a,b])=>a+","+b).join("\n");let savedSeason=null;try{savedSeason=localStorage.getItem(CURRENT_SEASON_KEY)}catch(e){}applySeason(savedSeason,{persist:false});populate();report("브라우저 DB 준비 완료 · 기준 시즌을 직접 저장할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
+ try{await restore();try{championMap={...RKBOChampions.DEFAULT,...JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}}catch(e){championMap={...RKBOChampions.DEFAULT}}; $("champions").value=RKBOChampions.format(championMap);showChampionStatus("기본 22~60차 "+Object.keys(RKBOChampions.DEFAULT).length+"개 우승 시즌을 불러왔습니다. 수정한 뒤 저장하면 즉시 반영됩니다.");let savedSeason=null;try{savedSeason=localStorage.getItem(CURRENT_SEASON_KEY)}catch(e){}applySeason(savedSeason,{persist:false});populate();report("브라우저 DB 준비 완료 · 기준 시즌을 직접 저장할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
  for(const id of ["teamSelect","includeRetired"])$(id).addEventListener("change",updatePlayerList);
 
  $("saveCurrentSeason").addEventListener("click",()=>{
@@ -388,10 +430,40 @@ async function init(){
  $("githubLoad").addEventListener("click",()=>loadCloud());
  $("githubSave").addEventListener("click",publishCloud);
 
- $("playerSelect").addEventListener("change",()=>{selectedId=$("playerSelect").value;photoGeneration++;photo=null;originalPhotoFile=null;$("photoInput").value="";photoButtons();cutoutStatus("사진을 선택하면 AI 누끼를 사용할 수 있습니다.");$("faCheck").checked=false;$("faGrade").disabled=true;draw()});
+ $("playerSelect").addEventListener("change",()=>{selectedId=$("playerSelect").value;showIdentityEditor();photoGeneration++;photo=null;originalPhotoFile=null;$("photoInput").value="";photoButtons();cutoutStatus("사진을 선택하면 AI 누끼를 사용할 수 있습니다.");$("faCheck").checked=false;$("faGrade").disabled=true;draw()});
+
+ $("saveIdentity").addEventListener("click",async()=>{
+  const p=players[selectedId];if(!p)return;
+  const kor=$("koreanNameInput").value.trim(),jersey=$("jerseyNumberInput").value.trim();
+  if(jersey&&!/^[0-9A-Za-z-]{1,6}$/.test(jersey)){
+   $("identityStatus").textContent="등번호는 00처럼 숫자 또는 6자 이내의 영문/숫자로 입력해 주세요.";return
+  }
+  const auto=RKBOReference.get({...p,koreanNameOverride:"",numberOverride:""});
+  p.koreanNameOverride=kor&&kor!==auto.koreanName?kor:"";
+  p.numberOverride=jersey&&jersey!==(auto.number||"")?jersey:"";
+  await store();populate();
+  $("identityStatus").textContent="한글 닉네임·등번호 저장 완료 · GitHub에도 반영하려면 공용 DB 저장을 눌러 주세요.";
+ });
+ $("clearIdentity").addEventListener("click",async()=>{
+  const p=players[selectedId];if(!p)return;
+  delete p.koreanNameOverride;delete p.numberOverride;
+  await store();populate();
+  $("identityStatus").textContent="수동 수정 초기화 완료 · CSV 매칭값을 다시 적용했습니다.";
+ });
+
  $("xlsInput").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;try{report("RKBO XLS 읽는 중...");const parsed=RKBOXls.parse(await file.arrayBuffer());const result=RKBOXls.reconcile(players,RKBOXls.group(parsed));players=result.players;await store();populate();report("XLS "+parsed.length+"개 기록 · 연결 "+result.info.linked+"명 · 신규 "+result.info.created+"명 · 중복·충돌 "+result.info.conflicts+"건 · 판정 보류 "+result.info.ambiguous+"명");}catch(e){console.error(e);report("XLS 불러오기 실패: "+e.message)}e.target.value=""});
  for(const id of ["bgStyle","bgColor2","bgAngle"])$(id).addEventListener("change",draw);
- $("saveChampions").onclick=()=>{const obj={};let errors=[];for(const line of $("champions").value.split(/\r?\n/)){if(!line.trim()||line.trim().startsWith("#"))continue;const m=line.trim().match(/^(\d+)\s*[,;\t]\s*(DOO|HAN|KIA|LG|LOT|NC|SAM|SSG|KT|KIW|SK)$/i);if(!m){errors.push(line);continue}obj[Number(m[1])]=m[2].toUpperCase()}if(errors.length){report("우승팀 입력 형식 오류: "+errors.slice(0,3).join(" / "));return}championMap=obj;localStorage.setItem("rkbo-champions",JSON.stringify(championMap));report("우승 시즌 "+Object.keys(obj).length+"개 저장");draw()};
+ $("saveChampions").onclick=()=>{
+  const result=RKBOChampions.parse($("champions").value);
+  if(result.errors.length){
+   showChampionStatus("저장 실패: "+result.errors.slice(0,3).join(" / "));
+   return;
+  }
+  if(!result.count){showChampionStatus("저장할 우승 시즌이 없습니다.");return}
+  setChampionMap(result.map,"우승 시즌 "+result.count+"개 저장 완료 · 미리보기의 우승 별에 즉시 반영했습니다.");
+ };
+ $("resetChampions").onclick=()=>setChampionMap(RKBOChampions.DEFAULT,
+  "기본 22~60차 우승팀 "+Object.keys(RKBOChampions.DEFAULT).length+"개 복원 완료.");
  $("zipInput").addEventListener("change",async e=>{if(e.target.files[0])await importZip(e.target.files[0]);e.target.value=""});
  $("photoInput").addEventListener("change",async e=>{
   const file=e.target.files[0];if(!file)return;
@@ -418,6 +490,10 @@ async function init(){
  $("resetDb").onclick=async()=>{if(!confirm("이 브라우저의 RKBO 선수 DB를 모두 지울까요?"))return;players={};await store();selectedId="";populate();report("DB 초기화 완료")};
  draw();
  refreshGithubControls();
+ void RKBOReference.load().then(summary=>{
+  populate();showUnmatchedRoster();
+  report("이름 매칭표 "+summary.englishUnique+"명 · 60차 등번호 "+summary.matchedJerseys+"명 연결 · 미매칭 "+summary.unmatched.length+"명 보관");
+ }).catch(e=>{console.error(e);$("unmatchedRosterDetails").textContent="CSV 로드 실패: "+e.message});
  void loadCloud({automatic:true});
 }
 document.addEventListener("DOMContentLoaded",()=>{init();if(document.fonts)document.fonts.ready.then(draw).catch(()=>{});});
