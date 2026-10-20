@@ -492,7 +492,7 @@ async function init(){
  refreshGithubControls();
  void RKBOReference.load().then(summary=>{
   populate();showUnmatchedRoster();
-  report("이름 매칭표 "+summary.englishUnique+"명 · 60차 등번호 "+summary.matchedJerseys+"명 연결 · 미매칭 "+summary.unmatched.length+"명 보관");
+  report("한글 닉네임 매칭표 "+summary.englishUnique+"개 · 60차 등번호 이름 일치 "+summary.matchedJerseys+"행 · 미매칭 "+summary.unmatched.length+"명 보관 (동명이인·60차 출전 여부는 별도 확인)");
  }).catch(e=>{console.error(e);$("unmatchedRosterDetails").textContent="CSV 로드 실패: "+e.message});
  void loadCloud({automatic:true});
 }
