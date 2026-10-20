@@ -161,7 +161,7 @@ window.RKBOCard=(()=>{
     write(ctx,r.title,4,y+17,18,"left",true);
     const index=ROW_SPRITE_TEAMS[r.team];
     if(rowSprite&&rowSprite.complete&&rowSprite.naturalWidth&&index!==undefined){
-     const tile=64;
+     const tile=48;
      ctx.drawImage(rowSprite,(index%5)*tile,Math.floor(index/5)*tile,tile,tile,
        iconX-iconSize/2,iconY-iconSize/2,iconSize,iconSize);
     }else if(rowlogo&&rowlogo.complete&&rowlogo.naturalWidth){
