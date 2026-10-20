@@ -288,7 +288,9 @@ async function importZip(file){
     }else players[p.id]=mergeRecord(players[p.id],p);
     players[p.id].hhLatestYear=Math.max(players[p.id].hhLatestYear||0,p.latestYear||0);
    }
-  await store();populate();report("완료: "+valid+"명 처리"+(fail?" · "+fail+"개 파일 분석 실패":"")+" · DB 총 "+Object.keys(players).length+"명");
+  const reattached=RKBOPostseason.relink(players);
+  players=reattached.players;
+  await store();populate();report("완료: "+valid+"명 처리"+(fail?" · "+fail+"개 파일 분석 실패":"")+" · DB 총 "+Object.keys(players).length+"명"+(reattached.linked?" · 포시 이력 연결 "+reattached.linked+"명":""));
  }catch(e){console.error(e);report("불러오기 실패: "+e.message)}finally{$("zipInput").disabled=false}
 }
 
@@ -300,7 +302,8 @@ function updatePostseasonStatus(message){
 async function applyPostseasonRecords(rows,sourceDescription){
  if(!rows.length)throw Error("가져올 메이저리그 포스트시즌 기록이 없습니다.");
  const {players:updated,counts}=RKBOPostseason.merge(players,rows);
- players=updated;await store();populate();
+ const restored=RKBOPostseason.relink(updated);
+ players=restored.players;await store();populate();
  updatePostseasonStatus(sourceDescription+" · "+rows.length+"개 기록 분석, 신규 시즌 "+
   counts.added+"건 · 갱신 "+counts.updated+"건 · 모호한 선수 "+counts.ambiguous+
   "명 · 팀 충돌 "+counts.conflicts+"건.");
@@ -550,7 +553,7 @@ async function init(){
   $("identityStatus").textContent="수동 수정 초기화 완료 · CSV 매칭값을 다시 적용했습니다.";
  });
 
- $("xlsInput").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;try{report("RKBO XLS 읽는 중...");const parsed=RKBOXls.parse(await file.arrayBuffer());const result=RKBOXls.reconcile(players,RKBOXls.group(parsed));players=result.players;await store();populate();report("XLS "+parsed.length+"개 기록 · 연결 "+result.info.linked+"명 · 신규 "+result.info.created+"명 · 중복·충돌 "+result.info.conflicts+"건 · 판정 보류 "+result.info.ambiguous+"명");}catch(e){console.error(e);report("XLS 불러오기 실패: "+e.message)}e.target.value=""});
+ $("xlsInput").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;try{report("RKBO XLS 읽는 중...");const parsed=RKBOXls.parse(await file.arrayBuffer());const result=RKBOXls.reconcile(players,RKBOXls.group(parsed));const reassigned=RKBOPostseason.relink(result.players);players=reassigned.players;await store();populate();report("XLS "+parsed.length+"개 기록 · 연결 "+result.info.linked+"명 · 신규 "+result.info.created+"명 · 중복·충돌 "+result.info.conflicts+"건 · 판정 보류 "+result.info.ambiguous+"명");}catch(e){console.error(e);report("XLS 불러오기 실패: "+e.message)}e.target.value=""});
  for(const id of ["bgStyle","bgColor2","bgAngle"])$(id).addEventListener("change",draw);
  $("saveChampions").onclick=()=>{
   const result=RKBOChampions.parse($("champions").value);
