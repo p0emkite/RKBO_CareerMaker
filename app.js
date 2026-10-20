@@ -195,7 +195,7 @@ async function loadCloud({automatic=false}={}){
    applyTeamGradients({...remote.teamGradients,...teamGradients});
    updatePlayerList();
    setCloudStatus("GitHub 연결됨",remoteCount?
-    "브라우저에 "+localCount+"명, GitHub에 "+remoteCount+"명의 기록이 있습니다. 기존 기록을 보호하기 위해 자동 덮어쓰지 않았습니다. GitHub DB 불러오기는 현재 브라우저 기록을 대체합니다.":
+    "브라우저 "+localCount+"명, GitHub "+remoteCount+"명입니다. 화면의 기록은 덮어쓰지 않았습니다. '현재 DB를 GitHub에 저장'을 누르면 정규·포시 기록을 안전하게 병합하고 충돌 시 확인받습니다.":
     "GitHub DB는 아직 비어 있습니다. 브라우저 기록 "+localCount+"명을 최초로 GitHub에 저장할 수 있습니다.");
    return;
   }
