@@ -15,11 +15,12 @@
 <script defer src="./postseason.js?v=20261021-postseason-release2"></script>
 <script defer src="./roster.js?v=20261020-7"></script>
 <script defer src="./champions.js?v=20261020-7"></script>
-<script defer src="./card-renderer.js?v=20261021-postseason-release2"></script>
+<script defer src="./fa-grade.js?v=20261021-last3-fa"></script>
+<script defer src="./card-renderer.js?v=20261021-last3-fa"></script>
 <script defer src="./player-filter.js?v=20261020-3"></script>
 <script defer src="./github-db.js?v=20261021-gradients-db-collapse"></script>
 <script defer src="./cloud-merge.js?v=20261021-gradients-db-collapse"></script>
-<script defer src="./app.js?v=20261021-gradient-cloudmerge-v2"></script>
+<script defer src="./app.js?v=20261021-last3-fa"></script>
 </head>
 <body>
 <header class="topbar">
@@ -133,7 +134,7 @@
       <div class="fa-section"><label>헤더 배경 스타일<select id="bgStyle"><option value="solid">팀 컬러 단색</option><option value="gradient">그라데이션</option></select></label><div class="fields two"><label>그라데이션 끝 색상<input id="bgColor2" type="color" value="#17263c"></label><label>방향 <select id="bgAngle"><option value="0">가로</option><option value="90">세로</option><option value="45">대각선 ↗</option><option value="-45">대각선 ↘</option></select></label></div><p class="hint" id="teamGradientStatus" aria-live="polite">구단별 배경 설정은 자동 저장되며, GitHub DB 저장 시 공유됩니다.</p></div><div class="fa-section">
         <label class="check"><input type="checkbox" id="faCheck"> FA 선수 표시</label>
         <label>FA 등급 <select id="faGrade" disabled><option value="">미설정</option><option value="A">A등급</option><option value="B">B등급</option><option value="C">C등급</option></select></label>
-        <p class="hint">기존 구글 시트 FA 수식 기준으로 등급을 자동 제안하며 필요할 때 수동 변경할 수 있습니다.</p>
+        <p class="hint" id="faAutoHint" aria-live="polite">최근 3시즌 기록으로 FA 등급을 자동 산정합니다. 선수 선택 후 결과를 확인하세요.</p>
       </div>
     </section>
     <section class="panel">
