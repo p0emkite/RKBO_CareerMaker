@@ -8,14 +8,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=20261020-4">
+<link rel="stylesheet" href="./styles.css?v=20261020-5">
 <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script defer src="./rkbo-xls.js"></script>
 <script defer src="./card-renderer.js?v=20261020-3"></script>
 <script defer src="./player-filter.js?v=20261020-3"></script>
 <script defer src="./github-db.js?v=20261020-4"></script>
-<script defer src="./app.js?v=20261020-4"></script>
+<script defer src="./app.js?v=20261020-5"></script>
 </head>
 <body>
 <header class="topbar">
@@ -58,26 +58,27 @@
       <details><summary>누적 규칙 / 이용 안내</summary><p class="help">같은 선수 ID·시즌은 중복 추가하지 않고 새 기록으로 갱신합니다. 오래된 시즌 ZIP을 추가하더라도 가장 최근 시즌의 선수 소속팀 및 통산 요약을 보존합니다. 브라우저 DB는 기기별로 저장되므로 JSON 백업을 권장합니다. 서로 다른 리그의 HHRecord 파일은 같은 DB에 섞지 마세요.</p><button id="resetDb" type="button" class="danger">브라우저 DB 초기화</button></details>
     </section>
     <section class="panel">
-      <div class="section-title"><h2>02 · 선수 선택</h2></div>
-      <div class="fields">
-        <label>최신 소속 구단 <select id="teamSelect"><option value="ALL">전체 구단</option></select></label>
-        <div class="season-settings">
-          <label for="currentSeasonInput">최신 시즌 차수 (직접 설정)</label>
-          <div class="season-save-row">
-            <input id="currentSeasonInput" type="number" min="1" max="999" step="1" inputmode="numeric" placeholder="예: 60">
-            <button id="saveCurrentSeason" type="button" class="secondary">시즌 저장</button>
-          </div>
-          <small id="currentSeasonStatus" aria-live="polite">시즌을 입력하고 저장하면 현역 필터에 적용됩니다.</small>
+      <div class="section-title player-section-title">
+        <h2>02 · 선수 선택</h2>
+        <div class="season-header-control">
+          <label for="currentSeasonInput">최신 시즌</label>
+          <input id="currentSeasonInput" type="number" min="1" max="999" step="1" inputmode="numeric" placeholder="차수" title="최신 시즌 차수">
+          <button id="saveCurrentSeason" type="button" class="secondary">저장</button>
         </div>
-        <label>선수 이름 검색 <input id="playerSearch" type="search" placeholder="선수명 또는 선수 ID"></label>
-        <div class="player-status-filter">
-          <label class="retired-toggle" for="includeRetired">
-            <input id="includeRetired" type="checkbox">
-            <span>은퇴 선수 포함</span>
-          </label>
+      </div>
+      <span id="currentSeasonStatus" class="visually-hidden" role="status" aria-live="polite">시즌을 입력하고 저장하면 현역 필터에 적용됩니다.</span>
+      <div class="fields">
+        <label for="teamSelect">소속 구단
+          <select id="teamSelect"><option value="ALL">전체 구단</option></select>
+        </label>
+        <div class="player-field">
+          <div class="player-field-head">
+            <label for="playerSelect">선수</label>
+            <label class="retired-toggle" for="includeRetired"><input id="includeRetired" type="checkbox"><span>은퇴 선수 포함</span></label>
+          </div>
+          <select id="playerSelect"><option value="">먼저 데이터를 추가하세요</option></select>
           <small id="latestSeasonHint">저장한 최신 시즌에 기록이 있는 선수만 표시합니다.</small>
         </div>
-        <label>선수 <select id="playerSelect"><option value="">먼저 데이터를 추가하세요</option></select></label>
       </div>
       <div id="playerInfo" class="player-info">선수를 선택하면 시즌별 기록과 ML Career가 자동 표시됩니다.</div>
     </section>
