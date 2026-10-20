@@ -19,4 +19,7 @@ assert.equal(filter.list(players,{team:'KIA',includeRetired:true}).length,2);
 assert.equal(filter.list(players,{query:'Earlier'}).length,1);
 assert.equal(filter.latestSeason({}),0);
 assert.equal(filter.list({}).length,0);
+const withFuture = {...players, anomaly:{id:'anomaly',name:'Anomalous 85th Season',team:'KIA',seasons:{2035:{}}}};
+assert.equal(filter.latestSeason(withFuture), 2035);
+assert.equal(filter.list(withFuture,{year:2010}).length,2); // Explicit 60th season overrides 85th data
 console.log('Player filter smoke tests passed.');
