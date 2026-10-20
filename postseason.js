@@ -113,7 +113,7 @@ window.RKBOPostseason=(()=>{
    const canonical="ps:"+item.kind+":"+signature(item.name);
    const p=matched.player||result[canonical]||{
     id:canonical,name:item.name,kind:item.kind,team:item.team,
-    number:"",seasons:{},postSeasons:{},postAliases:[],career:null,last3:null,latestYear:0,
+    number:"",seasons:{},postSeasons:{},postAliases:[],career:null,last3:null,latestYear:0,postLatestYear:0,
     source:"postseason-only"
    };
    if(matched.player)counts.matched++;
@@ -125,9 +125,12 @@ window.RKBOPostseason=(()=>{
    if(previous){counts.updated++}else counts.added++;
    seasons[item.year]={year:item.year,team:item.team,stats:item.stats,
       source:item.source};
+   const synthetic=p.id.startsWith("ps:");
+   const oldLatest=p.postLatestYear||0;
    result[p.id]={...p,postSeasons:seasons,
+    postLatestYear:Math.max(oldLatest,item.year),
     postAliases:[...new Set([...(p.postAliases||[]),item.name])],
-    team:p.team||item.team};
+    team:synthetic&&item.year>=oldLatest?item.team:(p.team||item.team)};
   }
   return {players:result,counts};
  }
