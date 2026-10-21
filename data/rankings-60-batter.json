@@ -1,0 +1,299 @@
+{
+  "season": 60,
+  "kind": "batter",
+  "columns": {
+    "AVG": [
+      {
+        "name": "Ji-Hoon Choi",
+        "team": "DOO",
+        "value": ".353",
+        "rank": 1
+      },
+      {
+        "name": "Nick Markakis",
+        "team": "SAM",
+        "value": ".344",
+        "rank": 2
+      },
+      {
+        "name": "Jinsol Bae",
+        "team": "KIA",
+        "value": ".341",
+        "rank": 3
+      }
+    ],
+    "OBP": [
+      {
+        "name": "Ji-Hoon Choi",
+        "team": "DOO",
+        "value": ".438",
+        "rank": 1
+      },
+      {
+        "name": "Duckworth Kendrick Lamar",
+        "team": "HAN",
+        "value": ".433",
+        "rank": 2
+      },
+      {
+        "name": "INE VO",
+        "team": "KIA",
+        "value": ".419",
+        "rank": 3
+      }
+    ],
+    "SLG": [
+      {
+        "name": "Ji-Hoon Choi",
+        "team": "DOO",
+        "value": ".647",
+        "rank": 1
+      },
+      {
+        "name": "Namyoon Jr. Lee",
+        "team": "SAM",
+        "value": ".597",
+        "rank": 2
+      },
+      {
+        "name": "Kyu Jin Jang",
+        "team": "HAN",
+        "value": ".545",
+        "rank": 3
+      }
+    ],
+    "OPS": [
+      {
+        "name": "Ji-Hoon Choi",
+        "team": "DOO",
+        "value": "1.085",
+        "rank": 1
+      },
+      {
+        "name": "Namyoon Jr. Lee",
+        "team": "SAM",
+        "value": ".958",
+        "rank": 2
+      },
+      {
+        "name": "Jawoook Koo",
+        "team": "SAM",
+        "value": ".946",
+        "rank": 3
+      }
+    ],
+    "H": [
+      {
+        "name": "Hina Shirayuki",
+        "team": "HAN",
+        "value": "204",
+        "rank": 1
+      },
+      {
+        "name": "Nick Markakis",
+        "team": "SAM",
+        "value": "202",
+        "rank": 2
+      },
+      {
+        "name": "Yeong-gil Park",
+        "team": "LOT",
+        "value": "200",
+        "rank": 3
+      }
+    ],
+    "2B": [
+      {
+        "name": "Ash Yu",
+        "team": "SAM",
+        "value": "48",
+        "rank": 1
+      },
+      {
+        "name": "INE VO",
+        "team": "KIA",
+        "value": "44",
+        "rank": 2
+      },
+      {
+        "name": "Jawoook Koo",
+        "team": "SAM",
+        "value": "44",
+        "rank": 2
+      }
+    ],
+    "3B": [
+      {
+        "name": "Ma Seong Ki",
+        "team": "SSG",
+        "value": "6",
+        "rank": 1
+      },
+      {
+        "name": "Yuni Ayatsuno",
+        "team": "NC",
+        "value": "5",
+        "rank": 2
+      },
+      {
+        "name": "Jinsu New",
+        "team": "SSG",
+        "value": "5",
+        "rank": 2
+      },
+      {
+        "name": "Siyeon Lee",
+        "team": "KIA",
+        "value": "5",
+        "rank": 2
+      }
+    ],
+    "HR": [
+      {
+        "name": "Namyoon Jr. Lee",
+        "team": "SAM",
+        "value": "46",
+        "rank": 1
+      },
+      {
+        "name": "Jeong-Eui Roh",
+        "team": "HAN",
+        "value": "46",
+        "rank": 1
+      },
+      {
+        "name": "Younjung Go",
+        "team": "SAM",
+        "value": "44",
+        "rank": 3
+      }
+    ],
+    "BB": [
+      {
+        "name": "Duckworth Kendrick Lamar",
+        "team": "HAN",
+        "value": "108",
+        "rank": 1
+      },
+      {
+        "name": "Dae-in Hwang",
+        "team": "SAM",
+        "value": "107",
+        "rank": 2
+      },
+      {
+        "name": "Hina Shirayuki",
+        "team": "HAN",
+        "value": "96",
+        "rank": 3
+      }
+    ],
+    "K": [
+      {
+        "name": "Namyoon Jr. Lee",
+        "team": "SAM",
+        "value": "125",
+        "rank": 1
+      },
+      {
+        "name": "YooYeon Kim",
+        "team": "NC",
+        "value": "123",
+        "rank": 2
+      },
+      {
+        "name": "Wonyoung Jang",
+        "team": "HAN",
+        "value": "118",
+        "rank": 3
+      }
+    ],
+    "R": [
+      {
+        "name": "Namyoon Jr. Lee",
+        "team": "SAM",
+        "value": "138",
+        "rank": 1
+      },
+      {
+        "name": "Ash Yu",
+        "team": "SAM",
+        "value": "137",
+        "rank": 2
+      },
+      {
+        "name": "Younjung Go",
+        "team": "SAM",
+        "value": "135",
+        "rank": 3
+      }
+    ],
+    "RBI": [
+      {
+        "name": "Namyoon Jr. Lee",
+        "team": "SAM",
+        "value": "165",
+        "rank": 1
+      },
+      {
+        "name": "wendy todayis",
+        "team": "SAM",
+        "value": "140",
+        "rank": 2
+      },
+      {
+        "name": "Jeong-Eui Roh",
+        "team": "HAN",
+        "value": "134",
+        "rank": 3
+      }
+    ],
+    "SB": [
+      {
+        "name": "Heon Gon Kim",
+        "team": "KIA",
+        "value": "72",
+        "rank": 1
+      },
+      {
+        "name": "INE VO",
+        "team": "KIA",
+        "value": "65",
+        "rank": 2
+      },
+      {
+        "name": "Father Sim",
+        "team": "KIA",
+        "value": "59",
+        "rank": 3
+      }
+    ],
+    "CS": [
+      {
+        "name": "Father Sim",
+        "team": "KIA",
+        "value": "40",
+        "rank": 1
+      },
+      {
+        "name": "Heon Gon Kim",
+        "team": "KIA",
+        "value": "40",
+        "rank": 1
+      },
+      {
+        "name": "Siyeon Lee",
+        "team": "KIA",
+        "value": "28",
+        "rank": 3
+      },
+      {
+        "name": "INE VO",
+        "team": "KIA",
+        "value": "28",
+        "rank": 3
+      }
+    ]
+  },
+  "source": "60차_타자 각종순위.htm (user uploaded) - both leagues rankings; competition ties"
+}
