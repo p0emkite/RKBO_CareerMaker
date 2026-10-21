@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=20261021-gradients-db-collapse">
+<link rel="stylesheet" href="./styles.css?v=20261021-ranking-v1">
 <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script defer src="./rkbo-xls.js"></script>
@@ -16,11 +16,12 @@
 <script defer src="./roster.js?v=20261020-7"></script>
 <script defer src="./champions.js?v=20261020-7"></script>
 <script defer src="./fa-grade.js?v=20261021-last3-fa"></script>
-<script defer src="./card-renderer.js?v=20261021-last3-fa"></script>
+<script defer src="./season-rankings.js?v=20261021-ranking-v1"></script>
+<script defer src="./card-renderer.js?v=20261021-ranking-v1"></script>
 <script defer src="./player-filter.js?v=20261020-3"></script>
-<script defer src="./github-db.js?v=20261021-gradients-db-collapse"></script>
+<script defer src="./github-db.js?v=20261021-ranking-v1"></script>
 <script defer src="./cloud-merge.js?v=20261021-gradients-db-collapse"></script>
-<script defer src="./app.js?v=20261021-last3-fa"></script>
+<script defer src="./app.js?v=20261021-ranking-v1"></script>
 </head>
 <body>
 <header class="topbar">
@@ -49,7 +50,23 @@
         <p class="hint" id="postImportStatus" role="status" aria-live="polite">
           ZIP 내부의 ‘2002 Season Stats’는 무시하고 위에 직접 입력한 차수로 등록해요. 동일 선수·시즌 기록은 갱신됩니다.
         </p>
-      </div><p id="importProgress" class="hint">최초 한 번 가져오면 이 브라우저에 선수 데이터가 보관됩니다.</p>
+      </div>
+      <div class="season-rank-import">
+        <div class="section-title"><h3>정규 시즌 기록 순위 (전체 1~3위)</h3><span class="status" id="rankingsCount">불러오는 중</span></div>
+        <p class="help">순위 HTML의 Both Leagues leaders를 분석하여 공동 순위까지 반영합니다. 60차 타자 순위는 기본 등록되어 있어요.</p>
+        <div class="rank-import-fields">
+          <label for="rankSeasonInput">시즌 차수
+            <input id="rankSeasonInput" type="number" min="1" max="999" step="1" inputmode="numeric" placeholder="예: 60">
+          </label>
+          <label for="rankKindInput">순위 분류
+            <select id="rankKindInput"><option value="batter">타자</option><option value="pitcher">투수</option></select>
+          </label>
+        </div>
+        <label class="upload-label subdued" for="rankHtmlInput">+ 시즌별 타자/투수 각종순위 HTML 추가</label>
+        <input id="rankHtmlInput" type="file" accept=".htm,.html,text/html" hidden>
+        <p class="hint" id="rankingImportStatus" role="status" aria-live="polite">각 시즌의 1~3위 기록값에만 색상을 적용합니다. 공용 DB 저장 버튼을 누르면 다른 기기에도 반영됩니다.</p>
+      </div>
+      <p id="importProgress" class="hint">최초 한 번 가져오면 이 브라우저에 선수 데이터가 보관됩니다.</p>
       <div class="action-row">
         <button id="exportDb" type="button" class="secondary">DB JSON 백업</button>
         <label class="secondary button-label" for="importDb">DB 백업 복원</label>
@@ -147,7 +164,6 @@
     <section class="panel">
       <div class="section-title"><h2>05 · PNG 저장</h2></div>
       <p class="help">선수의 실제 ML 시즌 수에 맞춰 표 높이가 자동 확장됩니다. A등급 FA는 노란색 글씨로 표시됩니다.</p>
-      <button id="downloadBtn" type="button" class="primary" disabled>통산 PNG로 저장 ↓</button>
       <p class="hint">통산 표 너비: 타자 1492px / 투수 1606px, 높이는 시즌 수에 따라 변동. 선수 사진 기준: 761×365px.</p>
     </section>
   </section>
@@ -162,7 +178,13 @@
       <span id="kindBadge" class="kind">CAREER</span>
     </div></div>
     <div class="canvas-wrap"><canvas id="cardCanvas" width="1640" height="920" aria-label="선수 통산 이미지 미리보기"></canvas></div>
-    <p class="footnote">경력 초반 일부 시즌은 HHRecord 원본에 소속팀이 없을 수 있습니다. 미확인 시즌은 —로 표시하여 잘못된 팀 표기를 방지합니다.</p>
+    <div class="preview-footer">
+      <p class="footnote">경력 초반 일부 시즌은 HHRecord 원본에 소속팀이 없을 수 있습니다. 미확인 시즌은 —로 표시하여 잘못된 팀 표기를 방지합니다.</p>
+      <div class="preview-download">
+        <button id="downloadBtn" type="button" class="primary preview-save-button" disabled>통산 PNG로 저장 ↓</button>
+        <small id="saveImageStatus" role="status" aria-live="polite">파일 이름과 저장 위치를 선택할 수 있어요.</small>
+      </div>
+    </div>
   </section>
 </main>
 </body>
