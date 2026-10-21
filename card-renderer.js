@@ -91,7 +91,7 @@ window.RKBOCard=(()=>{
   }
  }
  function draw(args){
-  const {canvas,p,teamInfo={},image,logos={},rowSprite=null,wins={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",faRole=null,displayName=null,displayNumber=null,mode="regular"}=args;
+  const {canvas,p,teamInfo={},image,logos={},rowSprite=null,wins={},rankings={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",faRole=null,displayName=null,displayNumber=null,mode="regular"}=args;
   const ctx=canvas.getContext("2d");const pitcher=p?.kind==="pitcher";
   const post=mode==="postseason";
   const columns=post?(pitcher?postPit:postBat):(pitcher?pit:bat);
@@ -163,6 +163,7 @@ window.RKBOCard=(()=>{
      {title:"최근 3시즌 통산",stats:RKBOXls.summary(p,"last3"),total:true}
    ];
   const seasonIndex=post?1:0,teamIndex=post?2:1;
+  let highlightCount=0;
   entryRows.forEach((r,i)=>{
    const y=H0+headH+i*rowH;
    const rc=r.total?"#000":(teamInfo[r.team]?.[1]||"#31465c");
@@ -191,8 +192,13 @@ window.RKBOCard=(()=>{
     write(ctx,koreanTeam[r.team]||"—",starts[teamIndex]+wTeam*.75,y+17,17,"center",true,"#fff",wTeam*.45);
    }
    for(let j=teamIndex+1;j<tableCols.length;j++){
-    const value=rate(r.stats,tableCols[j][0]);
-    write(ctx,value,starts[j]+widths[j]/2,y+17,fitFont(ctx,value,18,15,widths[j]-3),"center",true,"#fff");
+    const field=tableCols[j][0],value=rate(r.stats,field);
+    // Only verified regular-season rows, not career totals or postseason.
+    const place=!r.total&&window.RKBORankings
+      ?RKBORankings.lookup(rankings,p,r,field,mode):null;
+    if(place?.color)highlightCount++;
+    write(ctx,value,starts[j]+widths[j]/2,y+17,fitFont(ctx,value,18,15,widths[j]-3),
+      "center",true,place?.color||"#fff");
    }
    // Summary first numeric falls at position 2, matching the original layout.
   });
@@ -203,7 +209,7 @@ window.RKBOCard=(()=>{
      W/2,y+rowH/2,17,"center",true,"#fff",W-30);
   }
   ctx.fillStyle="#fff";ctx.fillRect(0,height-1,W,1);
-  return {width:W,height,won,rows:rows.length,mode:post?"postseason":"regular"};
+  return {width:W,height,won,rows:rows.length,highlightCount,mode:post?"postseason":"regular"};
  }
  return {draw,tint,bat,pit,postBat,postPit,pitcherRole};
 })();
