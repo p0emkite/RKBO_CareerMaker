@@ -16,7 +16,7 @@ assert.match(css,/\.db-summary:focus-visible/);
 assert.match(html,/id="teamGradientStatus"/);
 assert.match(html,/cloud-merge\.js/);
 assert.match(app,/RKBOCloudMerge\.combine\(remote\.players,players\)/);
-assert.match(app,/teamGradients:config,players:all/);
+assert.match(app,/teamGradients:config,rankings:fullRankings,players:all/);
 assert.match(app,/function saveTeamGradient\(/);
 assert.match(app,/function applyTeamGradients\(/);
 assert.match(app,/function refreshTeamGradientFields\(/);
