@@ -112,12 +112,11 @@ window.RKBORankings=(()=>{
   if(value===null)return null;
   for(const r of available){
    if(code(r.team)!==team||!names(r.name).some(k=>identities.has(k)))continue;
-   const expected=number(r.value);
-   if(expected===null)continue;
-   const decimals=String(r.value).split(".")[1]?.length||0;
-   const scale=10**Math.min(6,decimals);
-   if(Math.round(value*scale)!==Math.round(expected*scale))continue;
-   return {rank:r.rank,color:COLORS[r.rank]||null};
+   // The uploaded leaderboards are authoritative for rank: some HHRecord
+   // player-page rates differ by 0.001-0.002 from its own leaders report.
+   // Matching is by original name/aliases + confirmed season team, not rates.
+   return {rank:r.rank,color:COLORS[r.rank]||null,
+    sourceValue:r.value,careerValue:value};
   }
   return null;
  }
