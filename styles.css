@@ -91,3 +91,6 @@ textarea{width:100%;background:#0c1624;border:1px solid #3a4b65;color:#f7f8fa;bo
 .preview-download .preview-save-button{width:auto;min-width:190px;padding:12px 21px;font-size:14px;white-space:nowrap}
 .preview-download small{font-size:10px;color:#9fb4d0;text-align:right;max-width:250px;line-height:1.5}
 @media(max-width:700px){.preview-footer{flex-direction:column;align-items:stretch}.preview-download{align-items:stretch}.preview-download .preview-save-button{width:100%}.preview-download small{text-align:center}}
+
+.canvas-wrap canvas{cursor:crosshair}
+.preview-edit-status{margin:10px 1px 0;color:#a3c5e9;font-size:11px;line-height:1.6}

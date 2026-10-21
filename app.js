@@ -215,7 +215,7 @@ async function loadCloud({automatic=false}={}){
    setCloudStatus("불러오기 취소","브라우저에 보관된 기존 기록을 그대로 유지했습니다.");
    return;
   }
-  players=remote.players;
+  players=remote.players;Object.values(players).forEach(reapplySeasonCorrections);
   applyTeamGradients(remote.teamGradients);
   setChampionMap({...RKBOChampions.DEFAULT,...remote.champions},
     "GitHub 저장 기록을 불러왔습니다. 기본 우승 기록도 함께 적용했습니다.");
@@ -243,7 +243,7 @@ async function publishCloud(){
   const remote=existing?.data||{schema:2,players:{},champions:{},teamGradients:{},currentSeason:null};
   const merged=RKBOCloudMerge.combine(remote.players,players);
   const relinked=RKBOPostseason.relink(merged.players);
-  const all=relinked.players;
+  const all=relinked.players;Object.values(all).forEach(reapplySeasonCorrections);
   const count=Object.keys(all).length,postRows=Object.values(all).reduce(
    (sum,p)=>sum+Object.keys(p.postSeasons||{}).length,0);
   if(!count){setCloudStatus("저장 중단","저장할 선수가 없습니다. 기록을 먼저 추가하세요.");return}
@@ -339,16 +339,16 @@ function mergeRecord(old,p){
   const prev=seasons[year];
   seasons[year]={...prev,...rec,team:rec.team||prev?.team||null,stats:rec.stats};
  }
- return {...old,...(newer?{name:p.name,number:p.number,team:p.team||old.team,career:p.career||old.career,last3:p.last3||old.last3,latestYear:p.latestYear}:{}),seasons,
+ return reapplySeasonCorrections({...old,...(newer?{name:p.name,number:p.number,team:p.team||old.team,career:p.career||old.career,last3:p.last3||old.last3,latestYear:p.latestYear}:{}),seasons,manualCorrections:{...(old.manualCorrections||{}),...(p.manualCorrections||{})},
   postSeasons:{...(old.postSeasons||{}),...(p.postSeasons||{})},
   postAliases:[...new Set([...(old.postAliases||[]),...(p.postAliases||[])])],
   koreanNameOverride:p.koreanNameOverride??old.koreanNameOverride,
-  numberOverride:p.numberOverride??old.numberOverride};
+  numberOverride:p.numberOverride??old.numberOverride});
 }
 let idb;
 function openDb(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,1);r.onupgradeneeded=()=>r.result.createObjectStore("data");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 async function store(){if(!idb)return;return new Promise((resolve,reject)=>{const tr=idb.transaction("data","readwrite");tr.objectStore("data").put(players,"players");tr.oncomplete=resolve;tr.onerror=()=>reject(tr.error)})}
-async function restore(){idb=await openDb();return new Promise((resolve,reject)=>{const tr=idb.transaction("data","readonly");const q=tr.objectStore("data").get("players");q.onsuccess=()=>{players=q.result||{};resolve()};q.onerror=()=>reject(q.error)})}
+async function restore(){idb=await openDb();return new Promise((resolve,reject)=>{const tr=idb.transaction("data","readonly");const q=tr.objectStore("data").get("players");q.onsuccess=()=>{players=q.result||{};Object.values(players).forEach(reapplySeasonCorrections);resolve()};q.onerror=()=>reject(q.error)})}
 async function importZip(file){
  if(!window.JSZip){report("ZIP 해제 모듈을 로딩할 수 없습니다. 인터넷 연결을 확인하세요.");return}
  $("zipInput").disabled=true;
@@ -392,7 +392,7 @@ async function applyPostseasonRecords(rows,sourceDescription){
  if(!rows.length)throw Error("가져올 메이저리그 포스트시즌 기록이 없습니다.");
  const {players:updated,counts}=RKBOPostseason.merge(players,rows);
  const restored=RKBOPostseason.relink(updated);
- players=restored.players;await store();populate();
+ players=restored.players;Object.values(players).forEach(reapplySeasonCorrections);await store();populate();
  updatePostseasonStatus(sourceDescription+" · "+rows.length+"개 기록 분석, 신규 시즌 "+
   counts.added+"건 · 갱신 "+counts.updated+"건 · 모호한 선수 "+counts.ambiguous+
   "명 · 팀 충돌 "+counts.conflicts+"건.");
@@ -529,6 +529,81 @@ async function fetchLogo(team){
  const img=new Image();img.onload=()=>{logos[team]=img;draw()};img.onerror=()=>{logos[team]=false;draw()};
  img.crossOrigin="anonymous";img.src="https://raw.githubusercontent.com/p0emkite/RKBO-/main/logos/"+team+".webp";
 }
+
+/* Click the original-size canvas grid, not the CSS-scaled screenshot. */
+function seasonCellAt(p,mode,x,y){
+ const post=mode==="postseason",pit=p.kind==="pitcher",W=pit?1606:1492,H=pit?231:220;
+ const cols=post?(pit?RKBOCard.postPit:RKBOCard.postBat):(pit?RKBOCard.pit:RKBOCard.bat);
+ const rows=Object.values((post?p.postSeasons:p.seasons)||{}).filter(r=>r&&r.year).sort((a,b)=>a.year-b.year);
+ const index=Math.floor((y-H-28)/29);
+ if(x<0||x>=W||index<0||index>=rows.length)return null;
+ const scale=W/cols.reduce((s,c)=>s+c[2],0);
+ let right=0,column=-1;
+ for(let i=0;i<cols.length;i++){right+=cols[i][2]*scale;if(x<right){column=i;break}}
+ const teamColumn=post?2:1;
+ if(column<teamColumn)return null;
+ const field=column===teamColumn?"team":cols[column][0];
+ if(field==="OPS")return {readonly:"OPS는 출루율+장타율로 자동 계산됩니다. 출루율 또는 장타율을 수정해 주세요."};
+ const r=rows[index];
+ return {mode:post?"postseason":"regular",year:Number(r.year),field,
+  label:field==="team"?"소속팀":cols[column][1],
+  value:field==="team"?(r.team||""):r.stats?.[field]??""};
+}
+function reapplySeasonCorrections(p){
+ for(const [key,edits] of Object.entries(p?.manualCorrections||{})){
+  const match=key.match(/^(regular|postseason):(\d{4})$/);
+  if(!match)continue;
+  const r=p[match[1]==="postseason"?"postSeasons":"seasons"]?.[Number(match[2])];
+  if(!r)continue;
+  if(Object.prototype.hasOwnProperty.call(edits,"team"))r.team=edits.team;
+  if(edits.stats)r.stats={...(r.stats||{}),...edits.stats};
+ }
+ return p;
+}
+async function editSeasonCell(event){
+ const p=players[selectedId],canvas=$("cardCanvas");
+ if(!p||!window.RKBOCard)return;
+ const rect=canvas.getBoundingClientRect();
+ if(!rect.width||!rect.height)return;
+ const x=(event.clientX-rect.left)*canvas.width/rect.width;
+ const y=(event.clientY-rect.top)*canvas.height/rect.height;
+ const hit=seasonCellAt(p,$("careerModeSelect").value,x,y);
+ if(!hit)return;
+ if(hit.readonly){window.alert(hit.readonly);return}
+ const name=rosterInfo(p).displayName,season=(hit.year-1950)+"차";
+ const promptText=hit.field==="team"
+  ?name+" · "+season+" 소속팀을 선택해 주세요.\n가능 코드: "+Object.keys(TEAM).join(", ")+"\n(미확인은 빈칸)"
+  :name+" · "+season+" · "+hit.label+" 기록값 수정";
+ const incoming=window.prompt(promptText,hit.value);
+ if(incoming===null)return;
+ const raw=incoming.trim(),field=hit.field;
+ let updated;
+ if(field==="team"){
+  updated=raw.toUpperCase()||null;
+  if(updated&&!TEAM[updated]){window.alert("지원하는 구단 코드를 입력해 주세요.");return}
+ }else{
+  if(!/^\d+(?:\.\d+)?$/.test(raw)){window.alert("0 이상의 숫자로 입력해 주세요.");return}
+  const num=Number(raw);
+  if(!Number.isFinite(num)){window.alert("올바른 숫자를 입력해 주세요.");return}
+  if(["AVG","OBP","SLG"].includes(field)&&num>1){window.alert("비율 성적은 0~1 사이로 입력해 주세요.");return}
+  if(field==="IP"&&!["","0","00","33","67"].includes(raw.split(".")[1]||"")){window.alert("투구이닝은 92.00, 92.33, 92.67 형식으로 입력해 주세요.");return}
+  if(!["AVG","OBP","SLG","ERA","IP"].includes(field)&&!Number.isInteger(num)){window.alert("이 기록은 정수만 입력할 수 있습니다.");return}
+  updated=field==="IP"?String(Math.trunc(num))+"."+((raw.split(".")[1]||"").replace(/^0+$/,"")||"00"):String(num);
+ }
+ const bucket=hit.mode==="postseason"?"postSeasons":"seasons";
+ const row=p[bucket]?.[hit.year];
+ if(!row)return;
+ const key=hit.mode+":"+hit.year;
+ const changes=p.manualCorrections||(p.manualCorrections={});
+ const entry=changes[key]||(changes[key]={});
+ if(field==="team"){entry.team=updated;row.team=updated}
+ else {entry.stats||={};entry.stats[field]=updated;row.stats={...(row.stats||{}),[field]:updated}}
+ try{
+  await store();draw();
+  $("cellEditStatus").textContent=name+" · "+season+" · "+hit.label+" 수정 완료. 브라우저에 저장했으며 PNG에도 즉시 반영됩니다. 공용 DB는 GitHub 저장 버튼으로 반영해 주세요.";
+ }catch(error){window.alert("기록 저장 실패: "+error.message)}
+}
+
 function draw(){
  if(window.RKBOCard){
   const p=players[selectedId],identity=rosterInfo(p);
@@ -661,6 +736,7 @@ async function init(){
  try{await restore();try{championMap={...RKBOChampions.DEFAULT,...JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}}catch(e){championMap={...RKBOChampions.DEFAULT}}; $("champions").value=RKBOChampions.format(championMap);showChampionStatus("기본 22~60차 "+Object.keys(RKBOChampions.DEFAULT).length+"개 우승 시즌을 불러왔습니다. 수정한 뒤 저장하면 즉시 반영됩니다.");let savedSeason=null;try{savedSeason=localStorage.getItem(CURRENT_SEASON_KEY)}catch(e){}applySeason(savedSeason,{persist:false});applyTeamGradients(readTeamGradients(),{persist:false});populate();report("브라우저 DB 준비 완료 · 기준 시즌을 직접 저장할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
  for(const id of ["teamSelect","includeRetired"])$(id).addEventListener("change",updatePlayerList);
  $("careerModeSelect").addEventListener("change",updatePlayerList);
+ $("cardCanvas").addEventListener("click",editSeasonCell);
 
  $("saveCurrentSeason").addEventListener("click",()=>{
   const val=parseSeasonNumber($("currentSeasonInput").value);
@@ -714,7 +790,7 @@ async function init(){
   $("identityStatus").textContent="수동 수정 초기화 완료 · CSV 매칭값을 다시 적용했습니다.";
  });
 
- $("xlsInput").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;try{report("RKBO XLS 읽는 중...");const parsed=RKBOXls.parse(await file.arrayBuffer());const result=RKBOXls.reconcile(players,RKBOXls.group(parsed));const reassigned=RKBOPostseason.relink(result.players);players=reassigned.players;await store();populate();report("XLS "+parsed.length+"개 기록 · 연결 "+result.info.linked+"명 · 신규 "+result.info.created+"명 · 중복·충돌 "+result.info.conflicts+"건 · 판정 보류 "+result.info.ambiguous+"명");}catch(e){console.error(e);report("XLS 불러오기 실패: "+e.message)}e.target.value=""});
+ $("xlsInput").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;try{report("RKBO XLS 읽는 중...");const parsed=RKBOXls.parse(await file.arrayBuffer());const result=RKBOXls.reconcile(players,RKBOXls.group(parsed));const reassigned=RKBOPostseason.relink(result.players);players=reassigned.players;Object.values(players).forEach(reapplySeasonCorrections);await store();populate();report("XLS "+parsed.length+"개 기록 · 연결 "+result.info.linked+"명 · 신규 "+result.info.created+"명 · 중복·충돌 "+result.info.conflicts+"건 · 판정 보류 "+result.info.ambiguous+"명");}catch(e){console.error(e);report("XLS 불러오기 실패: "+e.message)}e.target.value=""});
  for(const id of ["bgStyle","bgColor2","bgAngle"])$(id).addEventListener(id==="bgColor2"?"input":"change",saveTeamGradient);
  $("saveChampions").onclick=()=>{
   const result=RKBOChampions.parse($("champions").value);
