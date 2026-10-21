@@ -75,6 +75,26 @@ const rendered=renderCtx.window.RKBOCard.draw({
  wins:{},teamInfo:{DOO:["두산","#003468","DOOSAN BEARS"]},logos:{}
 });
 assert.equal(rendered.highlightCount,4);
+assert.equal(rendered.height,220+28+(1+3)*29,"Regular cards include the ranking legend row");
+const last3Label=canvasLogs.find(x=>x.value==="최근 3시즌 통산");
+assert.ok(last3Label,"The last-three total must precede the legend");
+for(const [label,color] of [
+ ["금색: 해당 시즌 전체 1위 기록",rankings.COLORS[1]],
+ ["초록색: 해당 시즌 전체 2위 기록",rankings.COLORS[2]],
+ ["분홍색: 해당 시즌 전체 3위 기록",rankings.COLORS[3]]
+]){
+ const item=canvasLogs.find(x=>x.value===label);
+ assert.ok(item,"Ranking legend missing: "+label);
+ assert.equal(item.color,color,"Legend color must match season ranking color");
+ assert.ok(item.y>last3Label.y,"Legend must appear below the last-three total");
+}
+canvasLogs.length=0;
+const postseason=renderCtx.window.RKBOCard.draw({
+ canvas,p:{...player,postSeasons:{}},rankings:seeded,mode:"postseason",
+ wins:{},teamInfo:{DOO:["두산","#003468","DOOSAN BEARS"]},logos:{}
+});
+assert.equal(postseason.height,220+28+29,"Postseason card height must remain unchanged");
+assert.ok(!canvasLogs.some(x=>x.value.includes("해당 시즌 전체")),"Postseason must not show regular-season ranking legend");
 for(const val of ["0.353","0.436","0.647","1.083"])
  assert.ok(canvasLogs.some(x=>x.value===val&&x.color==="#FFD34D"),"Gold rank failed for "+val);
 assert.ok(canvasLogs.some(x=>x.value==="151"&&x.color==="#fff"),"Unranked rows must remain white");
