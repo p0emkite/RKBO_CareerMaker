@@ -40,10 +40,6 @@ window.RKBOGitHubDB = (() => {
       currentSeason:Number.isInteger(Number(n))&&n!==null&&n!==""&&Number(n)>=1&&Number(n)<=999?Number(n):null,
       champions:raw.champions&&typeof raw.champions==="object"&&!Array.isArray(raw.champions)?raw.champions:{},
       teamGradients:normalizeTeamGradients(raw.teamGradients),
-      // Compact per-season top-three leaderboards, separate from player statistics.
-      rankings:window.RKBORankings?.normalizeRecords
-        ?window.RKBORankings.normalizeRecords(raw.rankings)
-        :(raw.rankings&&typeof raw.rankings==="object"&&!Array.isArray(raw.rankings)?raw.rankings:{}),
       players:raw.players};
   }
   async function request(url,options={}){

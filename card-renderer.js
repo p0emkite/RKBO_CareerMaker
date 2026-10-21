@@ -91,13 +91,13 @@ window.RKBOCard=(()=>{
   }
  }
  function draw(args){
-  const {canvas,p,teamInfo={},image,logos={},rowSprite=null,wins={},rankings={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",faRole=null,displayName=null,displayNumber=null,mode="regular"}=args;
+  const {canvas,p,teamInfo={},image,logos={},rowSprite=null,wins={},gradient=false,color2="",angle=0,photoZoom=100,photoX=0,photoY=0,fa=false,faGrade="",faRole=null,displayName=null,displayNumber=null,mode="regular"}=args;
   const ctx=canvas.getContext("2d");const pitcher=p?.kind==="pitcher";
   const post=mode==="postseason";
   const columns=post?(pitcher?postPit:postBat):(pitcher?pit:bat);
   const W=pitcher?1606:1492,H0=pitcher?231:220,headH=28,rowH=29;
   const rows=Object.values((post?p?.postSeasons:p?.seasons)||{}).filter(r=>r&&r.year).sort((a,b)=>a.year-b.year);
-  const visibleRows=post?Math.max(1,rows.length):rows.length+3; // Regular: career, last 3, ranking legend
+  const visibleRows=post?Math.max(1,rows.length):rows.length+2;
   const height=H0+headH+visibleRows*rowH;
   canvas.width=W;canvas.height=height;
   const current=p?.team||"LG",theme=teamInfo[current]||["RKBO","#c50136","RKBO LEAGUE"],teamColor=theme[1]||"#c50136";
@@ -163,7 +163,6 @@ window.RKBOCard=(()=>{
      {title:"최근 3시즌 통산",stats:RKBOXls.summary(p,"last3"),total:true}
    ];
   const seasonIndex=post?1:0,teamIndex=post?2:1;
-  let highlightCount=0;
   entryRows.forEach((r,i)=>{
    const y=H0+headH+i*rowH;
    const rc=r.total?"#000":(teamInfo[r.team]?.[1]||"#31465c");
@@ -193,29 +192,11 @@ window.RKBOCard=(()=>{
    }
    for(let j=teamIndex+1;j<tableCols.length;j++){
     const field=tableCols[j][0],value=rate(r.stats,field);
-    // Only verified regular-season rows, not career totals or postseason.
-    const place=!r.total&&window.RKBORankings
-      ?RKBORankings.lookup(rankings,p,r,field,mode):null;
-    if(place?.color)highlightCount++;
     write(ctx,value,starts[j]+widths[j]/2,y+17,fitFont(ctx,value,18,15,widths[j]-3),
-      "center",true,place?.color||"#fff");
+      "center",true,"#fff");
    }
    // Summary first numeric falls at position 2, matching the original layout.
   });
-  // Show the same colors as the season statistics, within the exported PNG.
-  if(!post){
-   const legendY=H0+headH+entryRows.length*rowH;
-   const colors=window.RKBORankings?.COLORS||{1:"#FFD34D",2:"#62E89C",3:"#FF85C5"};
-   const legends=[["금색",1],["초록색",2],["분홍색",3]];
-   ctx.fillStyle="#000";ctx.fillRect(0,legendY,W,rowH);
-   ctx.fillStyle="#fff";ctx.fillRect(0,legendY,W,2);
-   const cellW=W/legends.length;
-   legends.forEach(([name,rank],i)=>{
-    const label=name+": 해당 시즌 전체 "+rank+"위 기록";
-    write(ctx,label,cellW*(i+.5),legendY+rowH/2+1,
-     fitFont(ctx,label,17,15,cellW-16),"center",true,colors[rank],cellW-16);
-   });
-  }
   if(post&&rows.length===0){
    const y=H0+headH;
    ctx.fillStyle="#17263b";ctx.fillRect(0,y,W,rowH);
@@ -223,7 +204,7 @@ window.RKBOCard=(()=>{
      W/2,y+rowH/2,17,"center",true,"#fff",W-30);
   }
   ctx.fillStyle="#fff";ctx.fillRect(0,height-1,W,1);
-  return {width:W,height,won,rows:rows.length,highlightCount,mode:post?"postseason":"regular"};
+  return {width:W,height,won,rows:rows.length,mode:post?"postseason":"regular"};
  }
  return {draw,tint,bat,pit,postBat,postPit,pitcherRole};
 })();

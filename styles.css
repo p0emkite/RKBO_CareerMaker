@@ -84,18 +84,7 @@ textarea{width:100%;background:#0c1624;border:1px solid #3a4b65;color:#f7f8fa;bo
 .db-panel-body>.help:first-child{margin-top:15px}
 #teamGradientStatus{margin:8px 1px 0;color:#9cb8d9}
 
-/* Season ranking import & preview save button */
-.season-rank-import{margin:13px 0;padding:13px;border:1px solid #35516d;border-radius:10px;background:#0e2034}
-.season-rank-import h3{margin:0;font-size:14px;color:#e5efff}
-.season-rank-import .section-title{margin-bottom:9px}
-.season-rank-import .help{margin:0 0 10px}
-.season-rank-import .upload-label{margin:9px 0}
-.rank-import-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.rank-import-fields label{display:grid;gap:6px;color:#b9cce4;font-weight:700;font-size:11px}
-.rank-import-fields select,.rank-import-fields input{width:100%;min-width:0;height:38px;border-radius:7px;border:1px solid #526883;background:#091727;color:#fff;padding:7px 9px;font:600 13px "Noto Sans KR",sans-serif}
-.rank-import-fields input[type=number]{appearance:textfield;-moz-appearance:textfield}
-.rank-import-fields input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.season-rank-import .hint{margin:8px 0 0}
+/* Preview save button */
 .preview-footer{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-top:10px}
 .preview-footer .footnote{margin:0;flex:1;max-width:750px}
 .preview-download{display:flex;flex:0 0 auto;flex-direction:column;align-items:flex-end;gap:6px}

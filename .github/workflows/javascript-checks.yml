@@ -19,7 +19,6 @@ jobs:
       - run: |
           node --check app.js
           node --check player-filter.js
-          node --check season-rankings.js
           node --check roster.js
           node --check champions.js
           node --check github-db.js
@@ -38,5 +37,5 @@ jobs:
           node tests/header-logo.test.cjs
           node tests/career-design.test.cjs
           node tests/fa-grade.test.cjs
-          node tests/season-rankings.test.cjs
+          node tests/career-preview.test.cjs
           node tests/postseason.test.cjs

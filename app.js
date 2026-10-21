@@ -1,6 +1,6 @@
 "use strict";
 const $=id=>document.getElementById(id);
-let championMap={},teamGradients={},rankings={};
+let championMap={},teamGradients={};
 const KOREAN_COLLATOR=new Intl.Collator("ko",{sensitivity:"base",numeric:true});
 
 let originalPhotoFile=null,photoGeneration=0,cutoutBusy=false,cutoutModule=null;
@@ -104,39 +104,6 @@ function setChampionMap(source,message,{persist=true}={}){
 
 
 
-const RANKINGS_LOCAL_KEY="rkbo-season-leaderboards-v1";
-function rankSetCount(){
- return Object.values(rankings).reduce((n,sets)=>n+Object.keys(sets||{}).length,0);
-}
-function updateRankStatus(message){
- $("rankingsCount").textContent=rankSetCount()+"개 시즌·분류";
- if(message)$("rankingImportStatus").textContent=message;
-}
-function setRankings(value,{persist=true}={}){
- rankings=RKBORankings.normalizeRecords(value);
- if(persist){
-  try{localStorage.setItem(RANKINGS_LOCAL_KEY,JSON.stringify(rankings))}
-  catch(error){console.warn("Could not save season rankings",error);
-   updateRankStatus("순위 기록을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.")}
- }
- updateRankStatus();
- draw();
-}
-function loadRankingsLocal(){
- try{return RKBORankings.normalizeRecords(JSON.parse(localStorage.getItem(RANKINGS_LOCAL_KEY)||"{}"))}
- catch(error){console.warn("Rankings in local storage are damaged",error);return {}}
-}
-async function loadSeedRankings(){
- try{
-  const res=await fetch("./data/rankings-60-batter.json?v=20261021",{cache:"no-store"});
-  if(!res.ok)throw Error("60차 기본 순위 파일을 읽지 못했습니다 ("+res.status+")");
-  const seed=await res.json();
-  if(seed.season!==60||seed.kind!=="batter"||!seed.columns)throw Error("60차 타자 순위 기본값이 올바르지 않습니다.");
-  setRankings(RKBORankings.combine({"60":{batter:seed.columns}},rankings));
-  updateRankStatus("60차 타자 순위 기본값을 적용했습니다. 다른 시즌·투수 순위는 HTML을 등록하세요.");
- }catch(error){console.warn("Default 60th batter ranking not loaded",error);
-  updateRankStatus("기본 60차 순위를 읽지 못했습니다. HTML 파일을 직접 등록할 수 있습니다.");}
-}
 function comparePlayerNicknames(a,b){
  const x=rosterInfo(a).displayName||a.name||"",y=rosterInfo(b).displayName||b.name||"";
  const koreanX=/[가-힣]/.test(x),koreanY=/[가-힣]/.test(y);
@@ -144,21 +111,6 @@ function comparePlayerNicknames(a,b){
  return KOREAN_COLLATOR.compare(x,y)
   ||KOREAN_COLLATOR.compare(String(a.name||""),String(b.name||""))
   ||String(a.id).localeCompare(String(b.id));
-}
-async function importSeasonLeaderboard(file){
- const season=parseSeasonNumber($("rankSeasonInput").value);
- const kind=$("rankKindInput").value;
- if(season===null)throw Error("순위 파일의 시즌 차수를 직접 입력해 주세요 (예: 60).");
- updateRankStatus(season+"차 "+(kind==="pitcher"?"투수":"타자")+" 순위 분석 중...");
- const parsed=RKBORankings.parse(await file.text(),{season,kind});
- const previous=rankings[String(season)]?.[kind];
- const count=Object.keys(parsed.columns).length;
- if(previous&&!confirm(season+"차 "+(kind==="pitcher"?"투수":"타자")+
-   " 순위가 이미 있습니다. "+count+"개 항목으로 교체할까요?"))return;
- setRankings(RKBORankings.combine(rankings,{[season]:{[kind]:parsed.columns}}));
- const matches=Object.values(parsed.columns).reduce((n,v)=>n+v.length,0);
- updateRankStatus(season+"차 "+(kind==="pitcher"?"투수":"타자")+" 순위 "+
-   count+"개 항목 · 상위 1~3위 "+matches+"건 저장 완료 (공동 순위 포함). 공용 DB 공유는 GitHub 저장 버튼을 눌러 주세요.");
 }
 
 const TEAM_GRADIENTS_LOCAL_KEY="rkbo-team-gradients-v1";
@@ -252,7 +204,6 @@ async function loadCloud({automatic=false}={}){
    }
    // Keep this browser's edits; fill missing teams from shared GitHub settings.
    applyTeamGradients({...remote.teamGradients,...teamGradients});
-   setRankings(RKBORankings.combine(remote.rankings,rankings));
    updatePlayerList();
    setCloudStatus("GitHub 연결됨",remoteCount?
     "브라우저 "+localCount+"명, GitHub "+remoteCount+"명입니다. 화면의 기록은 덮어쓰지 않았습니다. '현재 DB를 GitHub에 저장'을 누르면 정규·포시 기록을 안전하게 병합하고 충돌 시 확인받습니다.":
@@ -265,7 +216,6 @@ async function loadCloud({automatic=false}={}){
    return;
   }
   players=remote.players;
-  setRankings(RKBORankings.combine(remote.rankings,rankings));
   applyTeamGradients(remote.teamGradients);
   setChampionMap({...RKBOChampions.DEFAULT,...remote.champions},
     "GitHub 저장 기록을 불러왔습니다. 기본 우승 기록도 함께 적용했습니다.");
@@ -290,7 +240,7 @@ async function publishCloud(){
   // Always start from the latest remote SHA, so a recently uploaded postseason XLSX
   // does not require replacing (and losing) browser-local season records first.
   const existing=await RKBOGitHubDB.read();
-  const remote=existing?.data||{schema:2,players:{},champions:{},teamGradients:{},rankings:{},currentSeason:null};
+  const remote=existing?.data||{schema:2,players:{},champions:{},teamGradients:{},currentSeason:null};
   const merged=RKBOCloudMerge.combine(remote.players,players);
   const relinked=RKBOPostseason.relink(merged.players);
   const all=relinked.players;
@@ -300,8 +250,6 @@ async function publishCloud(){
   const seasonToSave=currentSeason??remote.currentSeason;
   if(seasonToSave===null){setCloudStatus("시즌 설정 필요","최신 시즌 차수를 먼저 저장해 주세요.");return}
   const config=RKBOGitHubDB.normalizeTeamGradients({...remote.teamGradients,...teamGradients});
-  const fullRankings=RKBORankings.combine(remote.rankings,rankings);
-  const rankingSets=Object.values(fullRankings).reduce((n,v)=>n+Object.keys(v).length,0);
   const prizes={...remote.champions,...championMap};
   const problems=merged.conflicts;
   const warning=problems.length
@@ -312,7 +260,7 @@ async function publishCloud(){
   const prompt="GitHub 공용 DB에 합쳐서 저장합니다.\n"+
    "선수 "+count+"명 · 정규 신규 시즌 "+merged.addedRegular+"건"+
    " · 포시 신규 시즌 "+merged.addedPostseason+"건 (포시 전체 "+postRows+"건)"+
-   " · 구단별 배경 설정 "+Object.keys(config).length+"팀 · 시즌 순위 "+rankingSets+"개.\n"+
+   " · 구단별 배경 설정 "+Object.keys(config).length+"팀.\n"+
    "기존 GitHub 선수 기록은 삭제하지 않습니다."+warning+
    "\nGitHub에 커밋할까요?";
   if(!confirm(prompt)){
@@ -320,20 +268,19 @@ async function publishCloud(){
   }
   setCloudStatus("GitHub 저장 중","기존 선수·포스트시즌 기록과 합쳐서 커밋하고 있습니다.");
   const result=await RKBOGitHubDB.save({
-   schema:2,currentSeason:seasonToSave,champions:prizes,teamGradients:config,rankings:fullRankings,players:all
+   schema:2,currentSeason:seasonToSave,champions:prizes,teamGradients:config,players:all
   });
   players=all;
   championMap=prizes;
-  setRankings(fullRankings);
   if(currentSeason===null)applySeason(seasonToSave);
   applyTeamGradients(config);
   await store();populate();
   cloudLoadedForPublish=true;cloudHasPlayers=true;
   setCloudStatus("저장 완료",
    "GitHub에 선수 "+count+"명 · 포스트시즌 "+postRows+"개 선수·시즌 기록"+
-   " · 구단 배경 "+Object.keys(config).length+"팀 · 순위 "+rankingSets+"개 저장 완료 ("+
+   " · 구단 배경 "+Object.keys(config).length+"팀 저장 완료 ("+
    new Date(result.updatedAt).toLocaleString("ko-KR")+").");
-  report("GitHub 공용 DB 저장 성공: 정규·포시 기록, 팀별 배경 설정과 시즌 순위가 함께 반영되었습니다.");
+  report("GitHub 공용 DB 저장 성공: 정규·포시 기록, 팀별 배경 설정이 함께 반영되었습니다.");
  }catch(e){console.error("GitHub save failed",e);setCloudStatus("저장 실패",e.message)}
  finally{refreshGithubControls()}
 }
@@ -589,7 +536,7 @@ function draw(){
   const faResult=refreshFASelection();
   const selectedGrade=faManualSelection?$("faGrade").value:faResult.grade;
   const data=RKBOCard.draw({displayName:identity.displayName,displayNumber:identity.number,faRole:faResult.role,
-   canvas:$("cardCanvas"),p,mode,teamInfo:TEAM,image:photo,logos,rowSprite,wins:championMap,rankings,
+   canvas:$("cardCanvas"),p,mode,teamInfo:TEAM,image:photo,logos,rowSprite,wins:championMap,
    gradient:$("bgStyle").value==="gradient",color2:$("bgColor2").value,angle:$("bgAngle").value,
    photoZoom:$("zoom").value,photoX:$("offsetX").value,photoY:$("offsetY").value,
    fa:$("faCheck").checked,faGrade:selectedGrade||""});
@@ -711,7 +658,7 @@ async function savePngAs(){
 }
 
 async function init(){
- try{await restore();try{championMap={...RKBOChampions.DEFAULT,...JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}}catch(e){championMap={...RKBOChampions.DEFAULT}}; $("champions").value=RKBOChampions.format(championMap);showChampionStatus("기본 22~60차 "+Object.keys(RKBOChampions.DEFAULT).length+"개 우승 시즌을 불러왔습니다. 수정한 뒤 저장하면 즉시 반영됩니다.");let savedSeason=null;try{savedSeason=localStorage.getItem(CURRENT_SEASON_KEY)}catch(e){}applySeason(savedSeason,{persist:false});setRankings(loadRankingsLocal(),{persist:false});applyTeamGradients(readTeamGradients(),{persist:false});populate();report("브라우저 DB 준비 완료 · 기준 시즌을 직접 저장할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
+ try{await restore();try{championMap={...RKBOChampions.DEFAULT,...JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}}catch(e){championMap={...RKBOChampions.DEFAULT}}; $("champions").value=RKBOChampions.format(championMap);showChampionStatus("기본 22~60차 "+Object.keys(RKBOChampions.DEFAULT).length+"개 우승 시즌을 불러왔습니다. 수정한 뒤 저장하면 즉시 반영됩니다.");let savedSeason=null;try{savedSeason=localStorage.getItem(CURRENT_SEASON_KEY)}catch(e){}applySeason(savedSeason,{persist:false});applyTeamGradients(readTeamGradients(),{persist:false});populate();report("브라우저 DB 준비 완료 · 기준 시즌을 직접 저장할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
  for(const id of ["teamSelect","includeRetired"])$(id).addEventListener("change",updatePlayerList);
  $("careerModeSelect").addEventListener("change",updatePlayerList);
 
@@ -796,12 +743,6 @@ async function init(){
   const season=parseSeasonNumber($("postSeasonInput").value);
   if(season!==null)updatePostseasonStatus("ZIP에 적용할 포스트시즌 차수: "+season+"차 (HTML의 2002 시즌 표기 무시)");
  });
- $("rankHtmlInput").addEventListener("change",async e=>{
-  const file=e.target.files[0];if(!file)return;
-  try{await importSeasonLeaderboard(file)}
-  catch(error){console.error(error);updateRankStatus("시즌 순위 등록 실패: "+error.message)}
-  finally{e.target.value=""}
- });
  $("zipInput").addEventListener("change",async e=>{if(e.target.files[0])await importZip(e.target.files[0]);e.target.value=""});
  $("photoInput").addEventListener("change",async e=>{
   const file=e.target.files[0];if(!file)return;
@@ -826,14 +767,12 @@ async function init(){
   draw();
  };
  $("downloadBtn").onclick=savePngAs;
- $("exportDb").onclick=()=>{const blob=new Blob([JSON.stringify({schema:1,exportedAt:new Date().toISOString(),players,rankings})],{type:"application/json"});const a=document.createElement("a"),u=URL.createObjectURL(blob);a.href=u;a.download="RKBO_Career_DB_"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
- $("importDb").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const payload=JSON.parse(await f.text());if(payload.schema!==1||!payload.players||typeof payload.players!=="object")throw Error("지원되지 않는 백업입니다.");for(const p of Object.values(payload.players)){if(p&&p.id&&p.seasons&&p.kind)players[p.id]=mergeRecord(players[p.id],p)}if(payload.rankings)setRankings(RKBORankings.combine(rankings,payload.rankings));await store();populate();report("백업 복원 완료: "+Object.keys(players).length+"명 · 시즌 순위 "+rankSetCount()+"개")}catch(err){report("복원 실패: "+err.message)}e.target.value=""};
+ $("exportDb").onclick=()=>{const blob=new Blob([JSON.stringify({schema:1,exportedAt:new Date().toISOString(),players})],{type:"application/json"});const a=document.createElement("a"),u=URL.createObjectURL(blob);a.href=u;a.download="RKBO_Career_DB_"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
+ $("importDb").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const payload=JSON.parse(await f.text());if(payload.schema!==1||!payload.players||typeof payload.players!=="object")throw Error("지원되지 않는 백업입니다.");for(const p of Object.values(payload.players)){if(p&&p.id&&p.seasons&&p.kind)players[p.id]=mergeRecord(players[p.id],p)}await store();populate();report("백업 복원 완료: "+Object.keys(players).length+"명")}catch(err){report("복원 실패: "+err.message)}e.target.value=""};
  $("resetDb").onclick=async()=>{if(!confirm("이 브라우저의 RKBO 선수 DB를 모두 지울까요?"))return;players={};await store();selectedId="";populate();report("DB 초기화 완료")};
  updatePostseasonStatus();
- if(!$("rankSeasonInput").value&&currentSeason!==null)$("rankSeasonInput").value=String(currentSeason);
  draw();
  loadRowSprite();
- void loadSeedRankings();
  refreshGithubControls();
  void RKBOReference.load().then(summary=>{
   populate();showUnmatchedRoster();
