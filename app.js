@@ -654,6 +654,62 @@ function draw(){
  $("previewDescription").textContent=p?p.name+" · 총 "+list.length+"개 ML 시즌 · "+(p.kind==="pitcher"?"투수":"타자"):"데이터를 가져온 뒤 선수를 선택하세요.";
  $("kindBadge").textContent=p?.kind==="pitcher"?"PITCHER":p?"BATTER":"CAREER";
 }
+
+function pngFromCanvas(canvas){
+ return new Promise((resolve,reject)=>{
+  canvas.toBlob(blob=>blob?resolve(blob):reject(Error("PNG 이미지를 생성하지 못했습니다.")),"image/png");
+ });
+}
+async function savePngAs(){
+ const p=players[selectedId];if(!p)return;
+ const filename="RKBO_"+($("careerModeSelect").value==="postseason"?"Postseason_":"Regular_")+
+  "Career_"+rosterInfo(p).displayName.replace(/[\/\\:*?"<>|]+/g,"_")+".png";
+ const status=$("saveImageStatus");
+ let handle=null,fallbackName=filename;
+ // Must invoke the native picker synchronously within the button's user gesture.
+ if(typeof window.showSaveFilePicker==="function"){
+  try{
+   handle=await window.showSaveFilePicker({
+    suggestedName:filename,
+    types:[{description:"PNG 이미지",accept:{"image/png":[".png"]}}],
+    excludeAcceptAllOption:true
+   });
+  }catch(error){
+   if(error?.name==="AbortError"){status.textContent="저장을 취소했습니다.";return}
+   console.warn("Native Save As picker unavailable; falling back to browser download",error);
+   status.textContent="파일 대화상자를 열지 못했습니다. 다운로드 방식으로 전환합니다.";
+  }
+ }
+ if(!handle){
+  const picked=window.prompt("파일 이름을 입력하세요. 저장 위치는 브라우저의 '다운로드 시 저장 위치 묻기' 설정에서 선택할 수 있습니다.",filename);
+  if(picked===null){status.textContent="저장을 취소했습니다.";return}
+  fallbackName=(picked.trim()||filename).replace(/[\/\\:*?"<>|]+/g,"_");
+  if(!/\.png$/i.test(fallbackName))fallbackName+=".png";
+ }
+ $("downloadBtn").disabled=true;
+ status.textContent="PNG 이미지 생성 중…";
+ try{
+  try{await document.fonts.load('700 20px "Noto Sans KR"');await document.fonts.ready}
+  catch(error){console.warn("Font loading failed",error)}
+  draw();
+  const blob=await pngFromCanvas($("cardCanvas"));
+  if(handle){
+   const writable=await handle.createWritable();
+   try{await writable.write(blob);await writable.close()}
+   catch(error){try{await writable.abort()}catch(ignore){}throw error}
+   status.textContent="PNG 저장 완료 · "+handle.name;
+  }else{
+   const url=URL.createObjectURL(blob),a=document.createElement("a");
+   a.href=url;a.download=fallbackName;document.body.appendChild(a);a.click();a.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),30000);
+   status.textContent="PNG 다운로드를 요청했습니다. 저장 위치는 브라우저 다운로드 설정에 따릅니다.";
+  }
+ }catch(error){
+  console.error("PNG save failed",error);
+  status.textContent="PNG 저장 실패: "+error.message;
+ }finally{draw()}
+}
+
 async function init(){
  try{await restore();try{championMap={...RKBOChampions.DEFAULT,...JSON.parse(localStorage.getItem("rkbo-champions")||"{}")}}catch(e){championMap={...RKBOChampions.DEFAULT}}; $("champions").value=RKBOChampions.format(championMap);showChampionStatus("기본 22~60차 "+Object.keys(RKBOChampions.DEFAULT).length+"개 우승 시즌을 불러왔습니다. 수정한 뒤 저장하면 즉시 반영됩니다.");let savedSeason=null;try{savedSeason=localStorage.getItem(CURRENT_SEASON_KEY)}catch(e){}applySeason(savedSeason,{persist:false});setRankings(loadRankingsLocal(),{persist:false});applyTeamGradients(readTeamGradients(),{persist:false});populate();report("브라우저 DB 준비 완료 · 기준 시즌을 직접 저장할 수 있습니다.")}catch(e){report("브라우저 저장소를 열지 못했습니다: "+e.message)}
  for(const id of ["teamSelect","includeRetired"])$(id).addEventListener("change",updatePlayerList);
@@ -769,7 +825,7 @@ async function init(){
   faManualSelection=!!$("faGrade").value;
   draw();
  };
- $("downloadBtn").onclick=async()=>{const p=players[selectedId];if(!p)return;try{await document.fonts.load('700 20px "Noto Sans KR"');await document.fonts.ready;}catch(e){console.warn("Font loading failed",e)}draw();const a=document.createElement("a");a.href=$("cardCanvas").toDataURL("image/png");a.download="RKBO_"+($("careerModeSelect").value==="postseason"?"Postseason_":"Regular_")+"Career_"+p.name.replace(/[^a-zA-Z0-9가-힣_-]/g,"_")+".png";a.click()};
+ $("downloadBtn").onclick=savePngAs;
  $("exportDb").onclick=()=>{const blob=new Blob([JSON.stringify({schema:1,exportedAt:new Date().toISOString(),players})],{type:"application/json"});const a=document.createElement("a"),u=URL.createObjectURL(blob);a.href=u;a.download="RKBO_Career_DB_"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
  $("importDb").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const payload=JSON.parse(await f.text());if(payload.schema!==1||!payload.players||typeof payload.players!=="object")throw Error("지원되지 않는 백업입니다.");for(const p of Object.values(payload.players)){if(p&&p.id&&p.seasons&&p.kind)players[p.id]=mergeRecord(players[p.id],p)}await store();populate();report("백업 복원 완료: "+Object.keys(players).length+"명")}catch(err){report("복원 실패: "+err.message)}e.target.value=""};
  $("resetDb").onclick=async()=>{if(!confirm("이 브라우저의 RKBO 선수 DB를 모두 지울까요?"))return;players={};await store();selectedId="";populate();report("DB 초기화 완료")};
