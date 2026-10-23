@@ -1,5 +1,5 @@
 .headshot .abstract-player{display:none}
-.headshot .player-pose{position:absolute;z-index:0;width:195px;height:166px;bottom:-9px;left:50%;transform:translateX(-50%);filter:drop-shadow(1px 5px 11px #000b);pointer-events:none;opacity:.94}
+.headshot .player-pose{position:absolute;z-index:0;width:200px;height:185px;bottom:-16px;left:50%;transform:translateX(-50%);object-fit:contain;filter:drop-shadow(0 5px 10px #0009);pointer-events:none;opacity:.98}
 .headshot .player-photo{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;transform:translate(-50%,-50%) translate(var(--photo-x,0%),var(--photo-y,0%)) scale(var(--photo-zoom,1));pointer-events:none;user-select:none;z-index:1;max-width:none;max-height:none}
 .headshot:has(.player-pose) .emblem,.headshot:has(.player-photo) .emblem{position:absolute;z-index:2;right:21px;bottom:7px;transform:none;font-size:23px;opacity:.85;text-shadow:0 2px 6px #020917,0 0 14px #020917}
 .headshot .edit-photo{position:absolute;top:4px;left:15px;z-index:4;border:1px solid #85dbef;background:#071323ec;color:#b7f3ff;border-radius:8px;font-size:11px;font-weight:800;padding:6px 9px}

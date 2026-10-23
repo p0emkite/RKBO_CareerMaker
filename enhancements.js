@@ -1,6 +1,6 @@
 (function rkboEnhancements(){
 "use strict";
-const OWNER="p0emkite",REPO="RKBO_CareerMaker",ROOT="cards/";
+const OWNER="p0emkite",REPO="RKBO_CareerMaker",ROOT="",BRANCH="rkbo-card-archive";
 const API="https://api.github.com/repos/"+OWNER+"/"+REPO+"/contents/";
 const IMG=ROOT+"data/card-images.json",IMPORT=ROOT+"data/imports.json";
 const EDIT=new URLSearchParams(location.search).get("admin")==="1";
@@ -14,13 +14,8 @@ const encText=s=>encBytes(new TextEncoder().encode(s));
 const decText=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g,"")),c=>c.charCodeAt(0)));
 const urlOf=path=>path?new URL("./"+path.split("/").map(encodeURIComponent).join("/"),location.href).href:"";
 function pose(p){
-  const defs='<defs><linearGradient id="cloth" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--jersey)"/><stop offset="1" stop-color="#0d1829"/></linearGradient></defs>';
-  const head='<ellipse cx="109" cy="41" rx="18" ry="21" fill="#b7cbd5"/><path d="M91 30 Q101 14 123 22 L128 31 Q106 28 90 37Z" fill="#172538"/><path d="M88 28L129 29 142 33 127 36 94 33Z" fill="var(--jersey)"/>';
-  const torso='<path d="M90 64Q108 57 126 65L145 101 126 121 92 121 75 95Z" fill="url(#cloth)" stroke="#ffffff44" stroke-width="2"/>';
-  const legs='<path d="M93 110H125L132 155 113 164 109 128 99 164 80 155Z" fill="#c2d0dd"/><path d="M85 157L99 159 91 174H68L76 168ZM114 160L131 154 146 169 148 175 120 173Z" fill="#19283b"/>';
-  const bat=`<g transform="translate(-2 1) rotate(-5 110 95)">${defs}<path d="M148 11L154 12 124 93 118 90Z" fill="#d4b48b" stroke="#fff8" stroke-width="1"/>${head}${torso}${legs}<path d="M85 71Q69 72 69 86L105 104 114 95 84 83 104 79Z" fill="var(--jersey)" stroke="#ffffff44" stroke-width="2"/><path d="M125 67Q139 73 136 83L121 92 110 84Z" fill="var(--jersey)"/><ellipse cx="117" cy="90" rx="9" ry="6" fill="#b7cbd5"/></g>`;
-  const pitch=`<g transform="translate(1 1)">${defs}<path d="M114 69L155 40 170 15" stroke="var(--jersey)" stroke-width="17" stroke-linecap="round" fill="none"/><ellipse cx="173" cy="14" rx="9" ry="10" fill="#bdcedb"/><path d="M88 81L51 100 47 79" stroke="var(--jersey)" stroke-width="17" stroke-linecap="round" fill="none"/><path d="M32 65L57 63 61 81 47 99 26 86Z" fill="#7b543c" stroke="#c9b59a" stroke-width="2"/>${head}${torso}<path d="M91 112L124 112 139 132 114 139 99 136 88 159 67 150Z" fill="#bfcedc"/><path d="M107 132L134 121 168 145 155 157 124 146Z" fill="#e0e8ed"/><path d="M65 147L88 157 77 170 51 166Z M152 153L168 142 190 151 192 158Z" fill="#132336"/></g>`;
-  return `<svg class="player-pose" viewBox="0 0 220 180" role="img" aria-label="${p.type==="투수"?"투구":"타격"} 동작 실루엣" xmlns="http://www.w3.org/2000/svg">${p.type==="투수"?pitch:bat}</svg>`;
+ const file=p.type==="투수"?"assets/default-pitcher.svg":"assets/default-batter.svg";
+ return `<img class="player-pose" src="${esc(urlOf(file))}" alt="${esc(p.type==="투수"?"투구":"타격")} 동작 기본 실루엣">`;
 }
 function art(p){
  const a=imageDB.images?.[p.id];
@@ -33,7 +28,7 @@ function status(t){if($("admin-status"))$("admin-status").textContent=t}
 async function request(path,method="GET",content=null,sha=null){
  if(!token)throw Error("GitHub 인증이 필요합니다.");
  const options={method,headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+token,"X-GitHub-Api-Version":"2022-11-28"}};
- if(content!==null){options.headers["Content-Type"]="application/json";options.body=JSON.stringify({message:"RKBO cards update: "+path,content,branch:"main",...(sha?{sha}:{})})}
+ if(content!==null){options.headers["Content-Type"]="application/json";options.body=JSON.stringify({message:"RKBO cards update: "+path,content,branch:BRANCH,...(sha?{sha}:{})})}
  const r=await fetch(API+path.split("/").map(encodeURIComponent).join("/"),options);
  let obj=null;try{obj=await r.json()}catch{}
  if(!r.ok){if(method==="GET"&&r.status===404)return null;throw Error("GitHub "+r.status+": "+(obj?.message||r.statusText))}
@@ -43,7 +38,7 @@ async function readJson(path){const a=await request(path);return a?{data:JSON.pa
 async function putJson(path,obj,sha){return request(path,"PUT",encText(JSON.stringify(obj,null,2)+"\n"),sha)}
 async function loadPublic(){
  try{
- const path=location.protocol==="file:"?`https://raw.githubusercontent.com/${OWNER}/${REPO}/main/${IMG}`:"./data/card-images.json";
+ const path=location.protocol==="file:"?`https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${IMG}`:"./data/card-images.json";
  const r=await fetch(path+"?v="+Date.now(),{cache:"no-store"});
  if(r.ok){const j=await r.json();if(j?.images&&typeof j.images==="object"){imageDB=j;refresh()}}
  }catch{}
